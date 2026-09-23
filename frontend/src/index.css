@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+:root {
+  /* ... tus variables intactas ... */
+}
+
+/* Envolvemos las etiquetas base para que Tailwind pueda sobreescribirlas */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    font-family: "Montserrat", sans-serif;
+    font-size: 14px;
+    color: #333333;
+    background-color: #f5f6fa;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--rap-azul-institucional);
+    text-decoration: none;
+  }
+
+  ul {
+    list-style: none;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  svg {
+    flex-shrink: 0;
+  }
+}
+
+:root {
+  --rap-font: "Montserrat", sans-serif;
+  --rap-fondo: #f5f6fa;
+  --rap-texto: #333333;
+  --rap-azul-institucional: #1976d2;
+  --rap-exito: #388e3c;
+}
+
+.app-sidebar {
+  overflow: hidden;
+  transition: width .25s ease, transform .25s ease;
+}
+
+.app-sidebar-closed {
+  width: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: 16rem !important;
+    transform: translateX(0);
+  }
+
+  .app-sidebar-closed {
+    transform: translateX(-100%);
+    width: 16rem !important;
+  }
+}

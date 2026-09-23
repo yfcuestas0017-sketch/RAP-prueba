@@ -1,0 +1,346 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  color: #172235;
+  background: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.login-page {
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.login-brand {
+  position: relative;
+  display: flex;
+  width: 46%;
+  min-height: 100vh;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 64px 9%;
+  color: #ffffff;
+  background: #0b3a6e;
+}
+
+.brand-decoration {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.brand-decoration-one {
+  top: -140px;
+  right: -120px;
+  width: 390px;
+  height: 390px;
+}
+
+.brand-decoration-two {
+  bottom: -170px;
+  left: -130px;
+  width: 430px;
+  height: 430px;
+}
+
+.cesmag-logo {
+  position: relative;
+  width: 180px;
+}
+
+.cesmag-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.brand-copy {
+  position: relative;
+  max-width: 480px;
+  margin: auto 0;
+}
+
+.brand-copy h1 {
+  margin: 36px 0 20px;
+  font-size: clamp(2.4rem, 4vw, 4.2rem);
+  line-height: 1.05;
+}
+
+.brand-copy p {
+  margin: 12px 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1.05rem;
+}
+
+.brand-copy .brand-title {
+  padding-bottom: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  font-size: 1.2rem;
+}
+
+.login-brand footer {
+  position: relative;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.login-panel {
+  display: flex;
+  width: 54%;
+  min-height: 100vh;
+  justify-content: center;
+  padding: 48px 8%;
+  background: #ffffff;
+}
+
+.login-content {
+  width: min(100%, 470px);
+  margin: auto 0;
+}
+
+.login-heading .eyebrow {
+  margin: 0 0 12px;
+  color: #b71c1c;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.login-heading h2 {
+  margin: 0 0 12px;
+  color: #172235;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+}
+
+.login-heading > p:last-child {
+  margin: 0 0 32px;
+  color: #687386;
+  line-height: 1.6;
+}
+
+.login-form,
+.admin-form {
+  display: grid;
+  gap: 18px;
+}
+
+.audience-label {
+  margin: 0;
+  color: #687386;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.form-field {
+  display: grid;
+  gap: 8px;
+}
+
+.form-field label {
+  color: #26354a;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.form-field input {
+  width: 100%;
+  border: 1px solid #d3d9e2;
+  border-radius: 7px;
+  padding: 14px 15px;
+  color: #172235;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-field input:focus {
+  border-color: #0b3a6e;
+  box-shadow: 0 0 0 3px rgba(11, 58, 110, 0.12);
+}
+
+.password-input {
+  position: relative;
+}
+
+.password-input input {
+  padding-right: 82px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  border: 0;
+  color: #0b3a6e;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  transform: translateY(-50%);
+}
+
+.forgot-link,
+.admin-link {
+  width: fit-content;
+  border: 0;
+  color: #b71c1c;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.88rem;
+  text-decoration: none;
+}
+
+.forgot-link:hover,
+.admin-link:hover {
+  text-decoration: underline;
+}
+
+.primary-button,
+.google-button {
+  min-height: 48px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.primary-button {
+  border: 1px solid #b71c1c;
+  color: #ffffff;
+  background: #b71c1c;
+}
+
+.primary-button:hover {
+  background: #941717;
+}
+
+.primary-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #9aa3b1;
+  font-size: 0.8rem;
+}
+
+.or-divider::before,
+.or-divider::after {
+  flex: 1;
+  height: 1px;
+  content: "";
+  background: #e3e6eb;
+}
+
+.google-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #d3d9e2;
+  color: #26354a;
+  background: #ffffff;
+}
+
+.google-button:hover {
+  background: #f7f8fa;
+}
+
+.google-mark {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.inline-message {
+  margin: 0;
+  border-radius: 6px;
+  padding: 11px 13px;
+  color: #214c77;
+  background: #edf5fc;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.field-error,
+.error-message {
+  color: #a21919;
+}
+
+.field-error {
+  font-size: 0.8rem;
+}
+
+.form-footer {
+  margin: 28px 0 0;
+  color: #8a94a3;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.admin-access {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #e6e8ec;
+  text-align: center;
+}
+
+.admin-form {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid #e3e6eb;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.admin-form h3 {
+  margin: 0;
+  color: #26354a;
+  font-size: 1rem;
+}
+
+@media (max-width: 800px) {
+  .login-page {
+    display: block;
+  }
+
+  .login-brand,
+  .login-panel {
+    width: 100%;
+    min-height: auto;
+  }
+
+  .login-brand {
+    padding: 42px 8%;
+  }
+
+  .brand-copy {
+    margin: 48px 0;
+  }
+
+  .brand-copy h1 {
+    margin-top: 24px;
+    font-size: 2.5rem;
+  }
+
+  .login-panel {
+    padding: 48px 8%;
+  }
+}

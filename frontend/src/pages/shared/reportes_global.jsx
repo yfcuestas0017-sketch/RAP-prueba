@@ -1,0 +1,29 @@
+import React from 'react';
+import { useOutletContext } from 'react-router-dom';
+import './reportes_global.css';
+
+const rows = [
+  ['Ingeniería de Software I', 'Grupo 01 · Diurna', 'Carlos Ruiz', '4.º Semestre', '25 / 25', 'Excelente (84%)'],
+  ['Base de Datos I', 'Grupo 01 · Nocturna', 'Carlos Ruiz', '4.º Semestre', '22 / 22', 'Bueno (78%)']
+];
+
+export default function ReportesGlobal() {
+  const { userRole = 'admin' } = useOutletContext() || {};
+  const isTeacher = userRole === 'docente';
+  const isStudent = userRole === 'estudiante';
+  const title = isStudent ? 'Mis Resultados y Evidencias' : isTeacher ? 'Reportes de Evaluaciones y Proyectos por grupo' : 'Reportes Consolidados y Exportación Masiva';
+  const description = isStudent ? 'Consulte el historial de sus Niveles de Desempeño y el estado de revisión de sus proyectos entregados.' : isTeacher ? 'Seleccione su clase para visualizar el resumen de rúbricas y los Niveles de Desempeño.' : 'Filtre por programa, cohorte, período y genere reportes institucionales globales.';
+  const filters = isStudent ? ['Buscar asignatura o RAP...', 'Filtro por Semestre:'] : isTeacher ? ['Asignatura y Grupo Asignado:', 'Periodo Académico:'] : ['Programa:', 'Semestre:', 'Jornada:', 'Periodo Académico:'];
+  return <section className="reports-page">
+    <h1 className="reports-title">{title}</h1><p className="reports-description">{description}</p>
+    {isStudent && <div className="report-card" style={{minHeight: 0, marginBottom: 25}}><h2>Progreso General del Plan de Estudios</h2><p>Cumplimiento acumulado de Resultados de Aprendizaje en la carrera.</p><div style={{display:'flex',alignItems:'center',gap:14}}><div style={{height:11, background:'#e8eff3', borderRadius:8, flex:1}}><div style={{height:'100%',width:'75%',background:'#19734b',borderRadius:8}} /></div><b className="excellent" style={{background:'none'}}>75% Completado</b></div></div>}
+    <div className="report-filters">{filters.map((filter) => <select className="report-select" key={filter} aria-label={filter}><option>{filter}</option><option>2026-2 (Actual)</option><option>Ingeniería de Sistemas</option></select>)}</div>
+    {!isStudent && !isTeacher && <div className="report-dashboard"><Performance /><Bars /></div>}
+    <div className="report-table-section"><h2>{isStudent ? 'Historial de RAPs y Calificaciones' : 'Resumen Consolidado por Espacio Académico'}</h2><p>{isStudent ? 'Consulta personal del Nivel de Desempeño (RF13), evidencias vinculadas y retroalimentación docente.' : 'Monitoreo detallado del porcentaje de éxito y distribución del nivel alcanzado por materia y docente.'}</p><div className="report-table-toolbar"><input className="report-search" placeholder={isStudent ? 'Buscar asignatura o RAP...' : 'Buscar asignatura o docente...'} />{!isStudent && <select className="report-select" style={{maxWidth: 155}}><option>Nivel de desempeño:</option></select>}<div className="report-toolbar-actions">{!isStudent && <button className="report-button">Exportar Excel</button>}<button className="report-button pdf">Descargar PDF</button></div></div><ReportTable student={isStudent} /></div>
+    {isTeacher && <div className="report-dashboard"><Performance /><Bars /></div>}
+  </section>;
+}
+
+function Performance() { return <article className="report-card"><h2>Cumplimiento Institucional del RAP</h2><p>Distribución porcentual por Niveles de Desempeño</p><div className="report-performance"><div className="report-donut"><strong>78%</strong><span>Éxito Global</span></div><div className="report-legend"><span className="excellent">● Excelente<br />&nbsp;&nbsp;50% (120 Alumnos)</span><span className="good">● Bueno<br />&nbsp;&nbsp;28% (67 Alumnos)</span><span className="regular">● Regular<br />&nbsp;&nbsp;16% (38 Alumnos)</span><span className="poor">● Ineficiente<br />&nbsp;&nbsp;6% (15 Alumnos)</span></div></div></article>; }
+function Bars() { return <article className="report-card"><h2>Rendimiento por Semestres de Evaluación</h2><p>Comparativa del nivel alcanzado en los hitos del plan de estudios</p><div className="report-bars">{[['72%','#123c61','4.º Semestre'],['84%','#009b51','7.º Semestre'],['56%','#b90805','9.º Semestre']].map(([value,color,label]) => <div className="report-bar" key={label} style={{'--height':value,'--bar-color':color}}><b>{value}</b><span>{label}</span></div>)}</div></article>; }
+function ReportTable({ student }) { const data = student ? [['Ingeniería de Software I','Prof. Carlos Ruiz','RAP 1 - Modelado','Excelente','Dominio total de arquitectura y UML.'],['Programación de Computadores','Prof. Carlos Ruiz','RAP 1 - Algoritmos','Bueno','Buen manejo de estructuras de datos.'],['Bases de Datos I','Prof. María Castro','RAP 2 - Diseño SQL','Regular','Revisar relaciones de claves y 3NF.']] : rows; return <div className="report-table-wrapper"><table className="report-table"><thead><tr>{(student ? ['Asignatura / Docente','RAP & Criterio (CE)','Nivel de desempeño','Retroalimentación'] : ['Espacio Académico','Docente a Cargo','Momento / RAP','Evaluados','Distribución de Niveles','Estado Global']).map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{data.map((row) => student ? <tr key={row[0]}><td><strong>{row[0]}</strong><small>{row[1]}</small></td><td><strong>{row[2]}</strong><small>CE 1.1 Diagramas UML</small></td><td><span className={`report-status ${row[3] === 'Excelente' ? 'excellent' : row[3] === 'Bueno' ? 'good' : 'regular'}`}>{row[3]}</span></td><td>{row[4]}</td></tr> : <tr key={row[0]}><td><strong>{row[0]}</strong><small>{row[1]}</small></td><td>{row[2]}<small>Ing. de Sistemas</small></td><td><strong>{row[3]}</strong><small>RAP 1 - Modelado</small></td><td>{row[4]}<small className="excellent">100% Cobertura</small></td><td><div className="report-levels" /></td><td><span className="report-status excellent">{row[5]}</span></td></tr>)}</tbody></table></div>; }
