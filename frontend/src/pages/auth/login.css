@@ -21,18 +21,21 @@ input {
 .login-page {
   display: flex;
   min-height: 100vh;
+  flex-direction: column;
   background: #ffffff;
 }
 
+/* 1. BLOQUE SUPERIOR AZUL: marca institucional */
 .login-brand {
   position: relative;
   display: flex;
-  width: 46%;
-  min-height: 100vh;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  padding: 64px 9%;
+  padding: 56px 8% 34px;
   color: #ffffff;
+  text-align: center;
   background: #0b3a6e;
 }
 
@@ -58,7 +61,8 @@ input {
 
 .cesmag-logo {
   position: relative;
-  width: 180px;
+  width: 150px;
+  margin: 0 auto;
 }
 
 .cesmag-logo img {
@@ -67,16 +71,38 @@ input {
   height: auto;
 }
 
+.cesmag-logo-button {
+  display: block;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+.cesmag-logo-button:hover {
+  opacity: 0.9;
+}
+
+.cesmag-logo-button:focus-visible {
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
 .brand-copy {
   position: relative;
-  max-width: 480px;
-  margin: auto 0;
+  width: min(100%, 620px);
+  margin: 0 auto;
+  text-align: center;
 }
 
 .brand-copy h1 {
   margin: 36px 0 20px;
-  font-size: clamp(2.4rem, 4vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1.05;
+  font-size: clamp(2.4rem, 4vw, 4.2rem);
 }
 
 .brand-copy p {
@@ -94,22 +120,42 @@ input {
 
 .login-brand footer {
   position: relative;
+  margin-top: 28px;
   color: rgba(255, 255, 255, 0.7);
   font-size: 0.85rem;
 }
 
+/* Línea divisoria bajo la marca */
+.brand-divider {
+  position: relative;
+  width: 140px;
+  height: 1px;
+  margin: 22px 0 0;
+  border: 0;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* 2. BLOQUE INFERIOR BLANCO: inicio de sesión */
 .login-panel {
   display: flex;
-  width: 54%;
-  min-height: 100vh;
+  width: 100%;
   justify-content: center;
-  padding: 48px 8%;
+  padding: 48px 8% 56px;
   background: #ffffff;
 }
 
 .login-content {
   width: min(100%, 470px);
-  margin: auto 0;
+  margin: 0 auto;
+  padding: 36px 34px 28px;
+  border: 1px solid #e6e8ec;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgba(15, 42, 74, 0.1);
+}
+
+.login-heading {
+  text-align: center;
 }
 
 .login-heading .eyebrow {
@@ -124,6 +170,8 @@ input {
 .login-heading h2 {
   margin: 0 0 12px;
   color: #172235;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   font-size: clamp(2rem, 3vw, 2.8rem);
 }
 
@@ -317,22 +365,12 @@ input {
 }
 
 @media (max-width: 800px) {
-  .login-page {
-    display: block;
-  }
-
-  .login-brand,
-  .login-panel {
-    width: 100%;
-    min-height: auto;
-  }
-
   .login-brand {
-    padding: 42px 8%;
+    padding: 40px 6% 26px;
   }
 
-  .brand-copy {
-    margin: 48px 0;
+  .cesmag-logo {
+    width: 120px;
   }
 
   .brand-copy h1 {
@@ -341,6 +379,10 @@ input {
   }
 
   .login-panel {
-    padding: 48px 8%;
+    padding: 36px 6% 40px;
+  }
+
+  .login-content {
+    padding: 28px 22px 22px;
   }
 }

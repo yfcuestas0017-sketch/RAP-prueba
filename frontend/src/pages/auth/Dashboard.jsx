@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import logoCesmag from "../../assets/logo_unicesmag.png";
 import logoGoogle from "../../assets/logo_google.jpg";
 import "./login.css";
-import { API_BASE_URL } from '../../config';
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -67,22 +69,32 @@ export default function Dashboard() {
         <div className="brand-decoration brand-decoration-one" />
         <div className="brand-decoration brand-decoration-two" />
         <div className="cesmag-logo">
-          <img src={logoCesmag} alt="Universidad CESMAG" />
+          <button
+            type="button"
+            className="cesmag-logo-button"
+            onClick={() => {
+              setMostrarAdmin(!mostrarAdmin);
+              setMensajeAdmin("");
+            }}
+            aria-label="Acceso administradores"
+          >
+            <img src={logoCesmag} alt="Universidad CESMAG" />
+          </button>
         </div>
         <div className="brand-copy">
-          <h1>Sistema RAP CESMAG</h1>
+          <h1>G-RAP Unicesmag</h1>
           <p className="brand-title">Gestión de Resultados de Aprendizaje</p>
-          <p>Programa de Ingeniería de Sistemas</p>
           <p>Seguimiento y evaluación académica</p>
         </div>
         <footer>Universidad CESMAG - Pasto, Nariño</footer>
+        <hr className="brand-divider" />
       </section>
 
       <section className="login-panel">
         <div className="login-content">
           <div className="login-heading">
             <h2>Iniciar sesión</h2>
-            <p>Ingresa con tus credenciales institucionales para continuar.</p>
+            <p>Entra con tu cuenta de Google</p>
           </div>
 
           <div className="login-form">
@@ -95,24 +107,10 @@ export default function Dashboard() {
               <img className="google-mark" src={logoGoogle} alt="" />
               Acceder con Google
             </button>
-          </div>
-
-          <div className="admin-access">
-            <button
-              type="button"
-              className="admin-link"
-              onClick={() => {
-                setMostrarAdmin(!mostrarAdmin);
-                setMensajeAdmin("");
-              }}
-              aria-expanded={mostrarAdmin}
-            >
-              {mostrarAdmin ? "Ocultar acceso administrador" : "Acceso administradores"}
-            </button>
 
             {mostrarAdmin && (
               <form className="admin-form" onSubmit={handleAdminLogin}>
-                <h3>Acceso administradores</h3>
+                <h3>Ingreso de administradores</h3>
                 <div className="form-field">
                   <label htmlFor="usuario-admin">Usuario</label>
                   <input
@@ -164,6 +162,10 @@ export default function Dashboard() {
                 )}
               </form>
             )}
+
+            <p className="form-footer">
+              © 2026 UNIVERSIDAD CESMAG. Todos los derechos reservados.
+            </p>
           </div>
         </div>
       </section>
