@@ -10,7 +10,6 @@ import {
   FaSearch,
   FaPlus
 } from "react-icons/fa";
-import { API_BASE_URL } from '../../../config';
 
 export default function AdminInicio() {
   const [datos, setDatos] = useState(null);
@@ -29,7 +28,7 @@ export default function AdminInicio() {
       setLoading(true);
       setError("");
 
-      const respuesta = await fetch(`${API_BASE_URL}/api/users/usuarios`, {
+      const respuesta = await fetch("http://localhost:3000/api/users/usuarios", {
         method: "GET",
         credentials: "include",
         headers: {
@@ -74,7 +73,7 @@ export default function AdminInicio() {
 
     try {
       setGuardando(true);
-      const respuesta = await fetch(`${API_BASE_URL}/api/admin/crear`, {
+      const respuesta = await fetch("http://localhost:3000/api/admin/crear", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -225,7 +224,7 @@ export default function AdminInicio() {
                   {estadisticas.rapsParametrizados} Definidos
                 </p>
                 <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Nodos RAP configurados</p>
-                <Link to="/admin/raps" className="text-xs font-bold text-[#112F5C] mt-2 inline-block hover:underline">
+                <Link to="/admin/parametrizacion?tab=resultados" className="text-xs font-bold text-[#112F5C] mt-2 inline-block hover:underline">
                   Ver RAPs &rarr;
                 </Link>
               </div>
@@ -260,7 +259,7 @@ export default function AdminInicio() {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Link
-                to="/admin/parametrizar-pruebas"
+                to="/admin/parametrizacion"
                 className="bg-[#112F5C] text-white py-2.5 px-4 rounded-xl text-xs font-semibold hover:bg-blue-900 transition-all shadow-sm text-center"
               >
                 Parametrizar Pruebas

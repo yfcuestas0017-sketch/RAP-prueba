@@ -144,7 +144,6 @@ const obtenerGrupo = async (req, res) => {
     return res.status(500).json({
 
       success: false,
-
       mensaje: "Error obteniendo el grupo"
 
     });

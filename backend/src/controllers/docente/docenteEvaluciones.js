@@ -278,7 +278,7 @@ const crearPregunta = async (req, res) => {
                 enunciado,
                 puntaje,
                 id_evaluacion_rap,
-                id_criterio_evaluacion
+                criterio_evaluacion
             )
             VALUES (
                 $1,
@@ -352,7 +352,7 @@ const crearPregunta = async (req, res) => {
                 await client.query(`
                     INSERT INTO opcion_pregunta (
                         texto,
-                        eleccion_boolean,
+                        eleccion,
                         id_pregunta
                     )
                     VALUES (
@@ -460,12 +460,10 @@ const listarPreguntas = async (req, res) => {
                 p.tipo_pregunta,
                 p.enunciado,
                 p.puntaje,
-                p.id_criterio_evaluacion
+                p.criterio_evaluacion
 
             FROM pregunta p
-
             WHERE p.id_evaluacion_rap = $1
-
             ORDER BY p.id_pregunta
         `, [
             idEvaluacionRap
@@ -481,7 +479,7 @@ const listarPreguntas = async (req, res) => {
                     SELECT
                         id_opcion_pregunta,
                         texto,
-                        eleccion_boolean
+                        eleccion
                     FROM opcion_pregunta
                     WHERE id_pregunta = $1
                     ORDER BY id_opcion_pregunta

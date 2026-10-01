@@ -64,7 +64,9 @@ const adminRapRoutes = require("./routes/Admin/adminRAP");
 const adminCompoRoutes = require("./routes/Admin/AdminCompo");
 const adminEvaluacionesRoutes = require("./routes/Admin/adminEvaluaciones");
 const estudianteRoutes = require("./routes/Estudiante/estudiante");
+const estudianteReportesRoutes = require("./routes/Estudiante/estudianteReportes");
 const docenteDashboardRoutes = require("./routes/Docente/docenteDashboard");
+const docenteReportesRoutes = require("./routes/Docente/docenteReportes");
 const adminReportesRoutes = require("./routes/Admin/adminReportes");
 const adminPerfilRoutes = require("./routes/Admin/adminPerfil");
 const docentePerfilRoutes = require("./routes/Docente/docentePerfil");
@@ -72,6 +74,7 @@ const estudiantePerfilRoutes = require("./routes/Estudiante/estudiantePerfil");
 const docenteEvaluacionesRoutes = require("./routes/Docente/docenteEvaluaciones");
 const estudianteEvaluacionesRoutes = require("./routes/Estudiante/estdianteEvaluaciones");
 const adminSeguimientoRoutes = require("./routes/Admin/adminSeguimiento");
+const docenteGrupoRoutes = require("./routes/Docente/docenteGrupos");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", exportUsersRoutes);
@@ -80,7 +83,9 @@ app.use("/api/adminRap", adminRapRoutes);
 app.use("/api/adminCompo", adminCompoRoutes);
 app.use("/api/admin/evaluaciones", adminEvaluacionesRoutes);
 app.use("/api/estudiante", estudianteRoutes);
+app.use("/api/estudiante", estudianteReportesRoutes);
 app.use("/api/docente", docenteDashboardRoutes);
+app.use("/api/docente", docenteReportesRoutes);
 app.use("/api/admin/reportes", adminReportesRoutes);
 app.use("/api/admin/Perfil", adminPerfilRoutes);
 app.use("/api/docente/Perfil", docentePerfilRoutes);
@@ -88,6 +93,7 @@ app.use("/api/estudiante/Perfil", estudiantePerfilRoutes);
 app.use("/api/docente/evaluaciones", docenteEvaluacionesRoutes);
 app.use("/api/estudiante/evaluaciones", estudianteEvaluacionesRoutes);
 app.use("/api/admin/seguimiento", adminSeguimientoRoutes);
+app.use("/api/docente", docenteGrupoRoutes);
 
 
 const PORT = process.env.PORT || 3000;

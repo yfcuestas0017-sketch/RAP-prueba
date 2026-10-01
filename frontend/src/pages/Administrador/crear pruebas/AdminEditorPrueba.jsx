@@ -11,13 +11,12 @@ import {
   FaLock,
   FaLockOpen
 } from 'react-icons/fa';
-import { API_BASE_URL } from '../../../config';
 
 export default function AdminEditorPrueba() {
   const { idPrueba } = useParams();
   const navigate = useNavigate();
 
-  const API = `${API_BASE_URL}/api/admin/evaluaciones`;
+  const API = 'http://localhost:3000/api/admin/evaluaciones';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

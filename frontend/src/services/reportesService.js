@@ -11,6 +11,7 @@ export const obtenerFiltrosReportesAdmin = () => fetchJSON('/api/admin/reportes/
 export const obtenerReportesDocente = (filters) => fetchJSON(`/api/docente/reportes${query(filters)}`);
 export const obtenerFiltrosReportesDocente = () => fetchJSON('/api/docente/reportes/filtros');
 export const obtenerReportesEstudiante = (filters) => fetchJSON(`/api/estudiante/reportes${query(filters)}`);
+export const obtenerFiltrosReportesEstudiante = () => fetchJSON('/api/estudiante/reportes/filtros');
 
 export async function descargarReporteAdmin(formato, filters) {
   const response = await fetch(`${apiBaseURL}/api/admin/reportes/exportar/${formato}${query(filters)}`, { credentials: 'include' });
@@ -33,4 +34,10 @@ export async function descargarReporteDocente(formato, filters) {
   const response = await fetch(`${apiBaseURL}/api/docente/reportes/exportar/${formato}${query(filters)}`, { credentials: 'include' });
   if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.mensaje || 'No fue posible exportar el reporte.'); }
   const enlace = document.createElement('a'); enlace.href = URL.createObjectURL(await response.blob()); enlace.download = formato === 'excel' ? 'reporte-docente-rap.xlsx' : 'reporte-docente-rap.pdf'; document.body.appendChild(enlace); enlace.click(); enlace.remove(); URL.revokeObjectURL(enlace.href);
+}
+
+export async function descargarReporteEstudiante(formato, filters) {
+  const response = await fetch(`${apiBaseURL}/api/estudiante/reportes/exportar/${formato}${query(filters)}`, { credentials: 'include' });
+  if (!response.ok) { const data = await response.json().catch(() => null); throw new Error(data?.mensaje || 'No fue posible exportar el reporte.'); }
+  const enlace = document.createElement('a'); enlace.href = URL.createObjectURL(await response.blob()); enlace.download = formato === 'excel' ? 'reporte-estudiante-rap.xlsx' : 'reporte-estudiante-rap.pdf'; document.body.appendChild(enlace); enlace.click(); enlace.remove(); URL.revokeObjectURL(enlace.href);
 }
