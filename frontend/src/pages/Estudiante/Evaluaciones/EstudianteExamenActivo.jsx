@@ -10,7 +10,8 @@ import {
   FaClipboardCheck
 } from 'react-icons/fa';
 
-const API = 'http://localhost:3000/api/estudiante/evaluaciones';
+import { API_BASE_URL } from '../../../config';
+const API = `${API_BASE_URL}/api/estudiante/evaluaciones`;
 
 export default function EstudianteExamenActivo() {
   const { idEvaluacion } = useParams();
@@ -204,7 +205,7 @@ export default function EstudianteExamenActivo() {
               <span className="text-[10px] font-bold text-blue-600 uppercase">EVALUACIÓN</span>
               <h2 className="text-sm font-bold text-[#112F5C]">{evaluacion.nombre}</h2>
               <p className="text-[11px] text-gray-500 mt-0.5">
-                {evaluacion.momento} — Semestre {evaluacion.semestre} · Grupo {evaluacion.grupo} ({evaluacion.jornada})
+                {evaluacion.momento} — Semestre {evaluacion.semestre} · {evaluacion.grupo} ({evaluacion.jornada})
               </p>
             </div>
             <div className="flex items-center gap-2">

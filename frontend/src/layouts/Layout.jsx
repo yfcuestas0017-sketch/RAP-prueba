@@ -1,7 +1,9 @@
+import React from 'react';
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from '../components/Sidebar'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { useSidebar } from '../hooks/useSidebar'
 
 const layoutStyle = {
   display: 'flex',
@@ -24,17 +26,26 @@ const contentStyle = {
   margin: '0 auto',
 }
 
-const Layout = () => (
-  <div style={layoutStyle}>
-    <Sidebar />
-    <div style={mainStyle}>
-      <Header />
-      <main style={contentStyle}>
-        <Outlet />
-      </main>
-      <Footer />
+const Layout = () => {
+  const { sidebarOpen, mostrarOverlay, toggleSidebar, cerrarSidebar } = useSidebar()
+
+  return (
+    <div style={layoutStyle}>
+      {mostrarOverlay && (
+        <div className="app-sidebar-overlay" onClick={cerrarSidebar} aria-hidden="true" />
+      )}
+
+      <Sidebar isOpen={sidebarOpen} />
+
+      <div style={mainStyle}>
+        <Header onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
+        <main style={contentStyle}>
+          <Outlet />
+        </main>
+        <Footer />
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 export default Layout

@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   FaHome, 
   FaGraduationCap, 
-  FaTasks, 
   FaClipboardList, 
   FaSlidersH, 
   FaFileExport, 
@@ -30,15 +29,6 @@ export const menuAdmin = [
       { title: 'Espacios Académicos', path: '/admin/espacios' },
       { title: 'Carga Docente', path: '/admin/carga-docente' },
       { title: 'Carga Estudiante', path: '/admin/carga-estudiante' }
-    ]
-  },
-  {
-    title: 'RAP y Criterios',
-    icon: <FaTasks />,
-    submenu: [
-      { title: 'Momentos de Evaluación', path: '/admin/rap/momentos' },
-      { title: 'Resultados de Aprendizaje', path: '/admin/rap/resultados' },
-      { title: 'Criterios de Evaluación', path: '/admin/rap/criterios' }
     ]
   },
   {

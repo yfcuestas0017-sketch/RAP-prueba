@@ -1,96 +1,96 @@
 const pool = require("../../config/database");
+const { enviarReporte } = require("../../utils/reporteExport");
 
-const obtenerReportes = async (req, res) => {
-
+const construirDatos = async (query) => {
     try {
-
         const {
             programa,
             semestre,
             jornada,
             periodo,
             docente,
-            espacio
-        } = req.query;
+            espacio,
+            componente
+        } = query;
 
         const condiciones = [];
-
         const valores = [];
 
         let parametro = 1;
 
-
         if (programa) {
-
             condiciones.push(
                 `s.id_programa = $${parametro}`
             );
 
             valores.push(Number(programa));
-
             parametro++;
         }
 
-
         if (semestre) {
-
             condiciones.push(
                 `s.numero = $${parametro}`
             );
 
             valores.push(Number(semestre));
-
             parametro++;
         }
 
-
         if (jornada) {
-
             condiciones.push(
                 `g.jornada = $${parametro}`
             );
 
             valores.push(jornada);
-
             parametro++;
         }
-
-
         if (periodo) {
-
             condiciones.push(
                 `g.periodo = $${parametro}`
             );
 
             valores.push(periodo);
-
             parametro++;
         }
 
-
         if (docente) {
-
             condiciones.push(
                 `e.id_user = $${parametro}`
             );
 
             valores.push(Number(docente));
-
             parametro++;
         }
-
 
         if (espacio) {
-
-            condiciones.push(
-                `pe.id_espacio_academico = $${parametro}`
-            );
+            condiciones.push(`
+                EXISTS (
+                    SELECT 1
+                    FROM programa_espacio pe_filtro
+                    WHERE pe_filtro.id_programa = p.id_programa
+                      AND pe_filtro.id_momento = e.id_momento_evaluacion
+                      AND pe_filtro.id_espacio_academico = $${parametro}
+                )
+            `);
 
             valores.push(Number(espacio));
-
             parametro++;
         }
 
+        if (componente) {
+            condiciones.push(`
+                EXISTS (
+                    SELECT 1
+                    FROM programa_espacio pe_filtro
+                    WHERE pe_filtro.id_programa = p.id_programa
+                      AND pe_filtro.id_momento = e.id_momento_evaluacion
+                      AND pe_filtro.id_componente = $${parametro}
+                )
+            `);
+
+            valores.push(Number(componente));
+            parametro++;
+        }
 
         const where =
             condiciones.length > 0
@@ -98,7 +98,6 @@ const obtenerReportes = async (req, res) => {
                 : "";
 
         const estadisticasQuery = `
-
             SELECT
 
                 COUNT(DISTINCT ug.id_user)
@@ -127,50 +126,36 @@ const obtenerReportes = async (req, res) => {
                 ON e.id_grupo = g.id_grupo
 
             LEFT JOIN evaluacion_respuesta er
-                ON er.id_evaluacion =
-                   e.id_evaluacion
-                AND er.id_user =
-                    ug.id_user
-
-            LEFT JOIN programa_espacio pe
-                ON pe.id_programa =
-                   p.id_programa
+                ON er.id_evaluacion = e.id_evaluacion
+                AND er.id_user = ug.id_user
 
             WHERE ug.estado = TRUE
 
             ${where}
-
         `;
 
-
-        const estadisticasResult =
-            await pool.query(
-                estadisticasQuery,
-                valores
-            );
-
+        const estadisticasResult = await pool.query(
+            estadisticasQuery,
+            valores
+        );
 
         const estadisticasRow =
             estadisticasResult.rows[0];
-
 
         const totalEstudiantes =
             Number(
                 estadisticasRow.total_estudiantes || 0
             );
 
-
         const totalEvaluados =
             Number(
                 estadisticasRow.total_evaluados || 0
             );
 
-
         const promedioGlobal =
             Number(
                 estadisticasRow.promedio_global || 0
             );
-
 
         const cobertura =
             totalEstudiantes > 0
@@ -181,7 +166,6 @@ const obtenerReportes = async (req, res) => {
                 : 0;
 
         const nivelesQuery = `
-
             SELECT
 
                 LOWER(
@@ -212,58 +196,40 @@ const obtenerReportes = async (req, res) => {
                 ON c.id_calificacion =
                    er.id_calificacion
 
-            LEFT JOIN programa_espacio pe
-                ON pe.id_programa =
-                   p.id_programa
-
             WHERE 1 = 1
 
             ${where}
 
             GROUP BY
                 LOWER(TRIM(c.nombre))
-
         `;
 
-
-        const nivelesResult =
-            await pool.query(
-                nivelesQuery,
-                valores
-            );
-
+        const nivelesResult = await pool.query(
+            nivelesQuery,
+            valores
+        );
 
         let totalNiveles = 0;
 
-        nivelesResult.rows.forEach(row => {
-
+        nivelesResult.rows.forEach((row) => {
             totalNiveles +=
                 Number(row.cantidad || 0);
-
         });
 
-
         const niveles = {
-
             excelente: 0,
-
             bueno: 0,
-
             regular: 0,
-
             ineficiente: 0
-
         };
 
-
-        nivelesResult.rows.forEach(row => {
-
+        nivelesResult.rows.forEach((row) => {
             const nombre =
-                row.nivel.toLowerCase();
+                String(row.nivel || "")
+                    .toLowerCase();
 
             const cantidad =
                 Number(row.cantidad || 0);
-
 
             const porcentaje =
                 totalNiveles > 0
@@ -273,48 +239,33 @@ const obtenerReportes = async (req, res) => {
                     ) * 100
                     : 0;
 
-
-            if (
-                nombre.includes("excelente")
-            ) {
-
-                niveles.excelente +=
-                    porcentaje;
-
+            if (nombre.includes("excelente")) {
+                niveles.excelente += porcentaje;
             }
 
-            else if (
-                nombre.includes("bueno")
-            ) {
-
-                niveles.bueno +=
-                    porcentaje;
-
+            else if (nombre.includes("bueno")) {
+                niveles.bueno += porcentaje;
             }
 
-            else if (
-                nombre.includes("regular")
-            ) {
-
-                niveles.regular +=
-                    porcentaje;
-
+            else if (nombre.includes("regular")) {
+                niveles.regular += porcentaje;
             }
 
             else if (
                 nombre.includes("ineficiente") ||
                 nombre.includes("insuficiente")
             ) {
-
-                niveles.ineficiente +=
-                    porcentaje;
-
+                niveles.ineficiente += porcentaje;
             }
-
         });
 
-        const semestresQuery = `
+        /**
+         * ========================================================
+         * RESULTADOS POR SEMESTRE
+         * ========================================================
+         */
 
+        const semestresQuery = `
             SELECT
 
                 s.numero AS semestre,
@@ -346,10 +297,6 @@ const obtenerReportes = async (req, res) => {
                 ON er.id_evaluacion =
                    e.id_evaluacion
 
-            LEFT JOIN programa_espacio pe
-                ON pe.id_programa =
-                   p.id_programa
-
             WHERE 1 = 1
 
             ${where}
@@ -359,25 +306,22 @@ const obtenerReportes = async (req, res) => {
 
             ORDER BY
                 s.numero
-
         `;
 
-
-        const semestresResult =
-            await pool.query(
-                semestresQuery,
-                valores
-            );
-
+        const semestresResult = await pool.query(
+            semestresQuery,
+            valores
+        );
 
         const semestres =
-            semestresResult.rows.map(row => ({
-
+            semestresResult.rows.map((row) => ({
                 semestre:
                     Number(row.semestre),
 
                 evaluaciones:
-                    Number(row.evaluaciones || 0),
+                    Number(
+                        row.evaluaciones || 0
+                    ),
 
                 porcentaje:
                     Number(
@@ -385,17 +329,18 @@ const obtenerReportes = async (req, res) => {
                             row.porcentaje || 0
                         ).toFixed(2)
                     )
-
             }));
 
-        const espaciosQuery = `
 
+        const componentesQuery = `
             SELECT
 
-                ea.id_espacio_academico,
+                comp.id_componentes,
 
-                ea.nombre
-                    AS espacio_academico,
+                comp.clave,
+
+                comp.nombre
+                    AS componente,
 
                 g.id_grupo,
 
@@ -419,8 +364,12 @@ const obtenerReportes = async (req, res) => {
                     DISTINCT er.id_user
                 ) AS evaluados,
 
-                COUNT(
-                    DISTINCT ug.id_user
+                (
+                    SELECT COUNT(*)
+                    FROM usuario_grupo ug2
+                    WHERE ug2.id_grupo =
+                          g.id_grupo
+                      AND ug2.estado = TRUE
                 ) AS estudiantes,
 
                 COALESCE(
@@ -430,84 +379,81 @@ const obtenerReportes = async (req, res) => {
 
                 COUNT(
                     DISTINCT CASE
-
                         WHEN LOWER(
                             TRIM(c.nombre)
                         ) LIKE '%excelente%'
-
                         THEN er.id_user
-
                     END
                 ) AS excelentes,
 
                 COUNT(
                     DISTINCT CASE
-
                         WHEN LOWER(
                             TRIM(c.nombre)
                         ) LIKE '%bueno%'
-
                         THEN er.id_user
-
                     END
                 ) AS buenos,
 
                 COUNT(
                     DISTINCT CASE
-
                         WHEN LOWER(
                             TRIM(c.nombre)
                         ) LIKE '%regular%'
-
                         THEN er.id_user
-
                     END
                 ) AS regulares,
 
                 COUNT(
                     DISTINCT CASE
-
                         WHEN LOWER(
                             TRIM(c.nombre)
                         ) LIKE '%ineficiente%'
-
                         OR LOWER(
                             TRIM(c.nombre)
                         ) LIKE '%insuficiente%'
-
                         THEN er.id_user
-
                     END
                 ) AS ineficientes
 
+            FROM evaluacion e
 
-            FROM programa_espacio pe
+            INNER JOIN grupo g
+                ON g.id_grupo =
+                   e.id_grupo
 
-            INNER JOIN espacio_academico ea
-                ON ea.id_espacio_academico =
-                   pe.id_espacio_academico
+            INNER JOIN semestre s
+                ON s.id_semestre =
+                   g.id_semestre
 
             INNER JOIN programa p
                 ON p.id_programa =
-                   pe.id_programa
+                   s.id_programa
 
-            INNER JOIN semestre s
-                ON s.id_programa =
+            /**
+             * Obtenemos una sola relación
+             * programa + momento + componente.
+             *
+             * Así no duplicamos una evaluación
+             * porque un componente tenga varios
+             * espacios académicos.
+             */
+            INNER JOIN (
+                SELECT DISTINCT
+                    id_programa,
+                    id_momento,
+                    id_componente
+                FROM programa_espacio
+                WHERE estado = TRUE
+            ) pe
+                ON pe.id_programa =
                    p.id_programa
+                AND pe.id_momento =
+                    e.id_momento_evaluacion
 
-            INNER JOIN grupo g
-                ON g.id_semestre =
-                   s.id_semestre
-
-            LEFT JOIN usuario_grupo ug
-                ON ug.id_grupo =
-                   g.id_grupo
-
-                AND ug.estado = TRUE
-
-            LEFT JOIN evaluacion e
-                ON e.id_grupo =
-                   g.id_grupo
+            INNER JOIN componentes comp
+                ON comp.id_componentes =
+                   pe.id_componente
 
             LEFT JOIN usuarios u
                 ON u.id_user =
@@ -527,56 +473,41 @@ const obtenerReportes = async (req, res) => {
 
             GROUP BY
 
-                ea.id_espacio_academico,
-
-                ea.nombre,
-
+                comp.id_componentes,
+                comp.clave,
+                comp.nombre,
                 g.id_grupo,
-
                 g.nombre,
-
                 g.jornada,
-
                 g.periodo,
-
                 s.numero,
-
                 u.id_user,
-
                 u.nombre,
-
                 u.apellido
 
             ORDER BY
 
                 s.numero,
 
-                ea.nombre
-
+                comp.nombre
         `;
 
+        const componentesResult = await pool.query(
+            componentesQuery,
+            valores
+        );
 
-        const espaciosResult =
-            await pool.query(
-                espaciosQuery,
-                valores
-            );
-
-
-        const espacios =
-            espaciosResult.rows.map(row => {
-
+        const componentes =
+            componentesResult.rows.map((row) => {
                 const evaluados =
                     Number(
                         row.evaluados || 0
                     );
 
-
                 const estudiantes =
                     Number(
                         row.estudiantes || 0
                     );
-
 
                 const porcentaje =
                     Number(
@@ -585,8 +516,7 @@ const obtenerReportes = async (req, res) => {
                         ).toFixed(2)
                     );
 
-
-                const cobertura =
+                const coberturaComponente =
                     estudiantes > 0
                         ? (
                             evaluados /
@@ -594,49 +524,36 @@ const obtenerReportes = async (req, res) => {
                         ) * 100
                         : 0;
 
-
                 let nivel =
                     "Sin resultados";
 
-
                 if (porcentaje >= 80) {
-
-                    nivel =
-                        "Excelente";
-
+                    nivel = "Excelente";
                 }
 
                 else if (porcentaje >= 70) {
-
-                    nivel =
-                        "Bueno";
-
+                    nivel = "Bueno";
                 }
 
                 else if (porcentaje >= 60) {
-
-                    nivel =
-                        "Regular";
-
+                    nivel = "Regular";
                 }
 
                 else if (evaluados > 0) {
-
-                    nivel =
-                        "Ineficiente";
-
+                    nivel = "Ineficiente";
                 }
 
-
                 return {
-
-                    idEspacioAcademico:
+                    idComponente:
                         Number(
-                            row.id_espacio_academico
+                            row.id_componentes
                         ),
 
-                    espacioAcademico:
-                        row.espacio_academico,
+                    clave:
+                        row.clave,
+
+                    componente:
+                        row.componente,
 
                     grupo:
                         row.grupo,
@@ -663,7 +580,8 @@ const obtenerReportes = async (req, res) => {
 
                     cobertura:
                         Number(
-                            cobertura.toFixed(2)
+                            coberturaComponente
+                                .toFixed(2)
                         ),
 
                     porcentaje,
@@ -671,7 +589,6 @@ const obtenerReportes = async (req, res) => {
                     nivel,
 
                     niveles: {
-
                         excelentes:
                             Number(
                                 row.excelentes || 0
@@ -691,69 +608,78 @@ const obtenerReportes = async (req, res) => {
                             Number(
                                 row.ineficientes || 0
                             )
-
                     }
-
                 };
-
             });
 
+        return {
+            estadisticas: {
+                totalEstudiantes,
+
+                totalEvaluados,
+
+                cobertura:
+                    Number(
+                        cobertura.toFixed(2)
+                    ),
+
+                exitoGlobal:
+                    Number(
+                        promedioGlobal.toFixed(2)
+                    )
+            },
+
+            niveles: {
+                excelente:
+                    Number(
+                        niveles.excelente.toFixed(2)
+                    ),
+
+                bueno:
+                    Number(
+                        niveles.bueno.toFixed(2)
+                    ),
+
+                regular:
+                    Number(
+                        niveles.regular.toFixed(2)
+                    ),
+
+                ineficiente:
+                    Number(
+                        niveles.ineficiente.toFixed(2)
+                    )
+            },
+
+            semestres,
+
+            componentes,
+            espacios: componentes
+        };
+
+    } catch (error) {
+
+        console.error(
+            "Error construyendo datos de reportes:",
+            error
+        );
+
+        throw error;
+    }
+};
+
+const obtenerReportes = async (req, res) => {
+    try {
+
+        const data =
+            await construirDatos(
+                req.query
+            );
+
         return res.status(200).json({
-
             success: true,
-
-            data: {
-
-                estadisticas: {
-
-                    totalEstudiantes,
-
-                    totalEvaluados,
-
-                    cobertura:
-                        Number(
-                            cobertura.toFixed(2)
-                        ),
-
-                    exitoGlobal:
-                        Number(
-                            promedioGlobal.toFixed(2)
-                        )
-
-                },
-
-                niveles: {
-
-                    excelente:
-                        Number(
-                            niveles.excelente.toFixed(2)
-                        ),
-
-                    bueno:
-                        Number(
-                            niveles.bueno.toFixed(2)
-                        ),
-
-                    regular:
-                        Number(
-                            niveles.regular.toFixed(2)
-                        ),
-
-                    ineficiente:
-                        Number(
-                            niveles.ineficiente.toFixed(2)
-                        )
-
-                },
-
-                semestres,
-
-                espacios
-
-            }
-
+            data
         });
-
 
     } catch (error) {
 
@@ -762,9 +688,7 @@ const obtenerReportes = async (req, res) => {
             error
         );
 
-
         return res.status(500).json({
-
             success: false,
 
             mensaje:
@@ -772,69 +696,178 @@ const obtenerReportes = async (req, res) => {
 
             error:
                 error.message
-
         });
+    }
+};
 
+
+const exportarReporte = async (req, res) => {
+
+    const formato =
+        req.params.formato;
+
+    if (
+        !["excel", "pdf"]
+            .includes(formato)
+    ) {
+
+        return res.status(400).json({
+            success: false,
+
+            mensaje:
+                "Formato de exportación no válido."
+        });
     }
 
+    try {
+
+        const data =
+            await construirDatos(
+                req.query
+            );
+
+        const columnas = [
+            "Componente",
+            "Clave",
+            "Grupo",
+            "Jornada",
+            "Periodo",
+            "Semestre",
+            "Docente",
+            "Evaluados",
+            "Estudiantes",
+            "Cobertura (%)",
+            "Porcentaje (%)",
+            "Nivel Global"
+        ];
+
+        /**
+         * ========================================================
+         * FILAS
+         * ========================================================
+         */
+
+        const filas =
+            data.componentes.map(
+                (componente) => [
+                    componente.componente,
+                    componente.clave,
+                    componente.grupo,
+                    componente.jornada,
+                    componente.periodo,
+                    componente.semestre,
+                    componente.docente,
+                    componente.evaluados,
+                    componente.estudiantes,
+                    componente.cobertura,
+                    componente.porcentaje,
+                    componente.nivel
+                ]
+            );
+
+        return enviarReporte(
+            res,
+            formato,
+            "reporte-rap-consolidado",
+            "Reporte Consolidado RAP",
+            columnas,
+            filas
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Error exportando reporte:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+
+            mensaje:
+                "No fue posible exportar el reporte.",
+
+            error:
+                error.message
+        });
+    }
 };
 
 const obtenerFiltros = async (req, res) => {
 
     try {
 
-        const programas = await pool.query(`
-            SELECT
-                id_programa,
-                nombre
-            FROM programa
-            ORDER BY nombre
-        `);
+        const programas =
+            await pool.query(`
+                SELECT
+                    id_programa,
+                    nombre
+                FROM programa
+                ORDER BY nombre
+            `);
 
+        const semestres =
+            await pool.query(`
+                SELECT
+                    id_semestre,
+                    numero,
+                    nombre,
+                    id_programa
+                FROM semestre
+                ORDER BY numero
+            `);
+        const grupos =
+            await pool.query(`
+                SELECT
+                    id_grupo,
+                    nombre,
+                    jornada,
+                    periodo,
+                    id_semestre
+                FROM grupo
+                ORDER BY nombre
+            `);
 
-        const semestres = await pool.query(`
-            SELECT
-                id_semestre,
-                numero,
-                nombre,
-                id_programa
-            FROM semestre
-            ORDER BY numero
-        `);
+        const docentes =
+            await pool.query(`
+                SELECT
+                    id_user,
+                    nombre,
+                    apellido
+                FROM usuarios
+                WHERE id_rol = 5
+                  AND estado = TRUE
+                ORDER BY
+                    nombre,
+                    apellido
+            `);
 
+        const espacios =
+            await pool.query(`
+                SELECT
+                    id_espacio_academico,
+                    nombre
+                FROM espacio_academico
+                ORDER BY nombre
+            `);
 
-        const grupos = await pool.query(`
-            SELECT
-                id_grupo,
-                nombre,
-                jornada,
-                periodo,
-                id_semestre
-            FROM grupo
-            ORDER BY nombre
-        `);
+        const componentes =
+            await pool.query(`
+                SELECT
 
+                    c.id_componentes,
+                    c.clave,
+                    c.nombre,
+                    me.nombre AS momento
+                FROM componentes c
 
-        const docentes = await pool.query(`
-            SELECT
-                id_user,
-                nombre,
-                apellido
-            FROM usuarios
-            WHERE id_rol = 5
-              AND estado = TRUE
-            ORDER BY nombre, apellido
-        `);
+                LEFT JOIN momento_evaluacion me
+                    ON me.id_momento_evaluacion =
+                       c.id_momento_evaluacion
 
-
-        const espacios = await pool.query(`
-            SELECT
-                id_espacio_academico,
-                nombre
-            FROM espacio_academico
-            ORDER BY nombre
-        `);
-
+                ORDER BY
+                    c.nombre
+            `);
 
         return res.status(200).json({
 
@@ -847,20 +880,16 @@ const obtenerFiltros = async (req, res) => {
 
                 semestres:
                     semestres.rows,
-
                 grupos:
                     grupos.rows,
-
                 docentes:
                     docentes.rows,
-
                 espacios:
-                    espacios.rows
-
+                    espacios.rows,
+                componentes:
+                    componentes.rows
             }
-
         });
-
 
     } catch (error) {
 
@@ -868,7 +897,6 @@ const obtenerFiltros = async (req, res) => {
             "Error obteniendo filtros:",
             error
         );
-
 
         return res.status(500).json({
 
@@ -879,18 +907,12 @@ const obtenerFiltros = async (req, res) => {
 
             error:
                 error.message
-
         });
-
     }
-
 };
 
-
 module.exports = {
-
     obtenerReportes,
-
-    obtenerFiltros
-
+    obtenerFiltros,
+    exportarReporte
 };

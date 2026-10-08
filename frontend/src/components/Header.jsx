@@ -6,11 +6,13 @@ import {
   FaChevronUp,
   FaSignOutAlt,
   FaUser,
-  FaBars
+  FaBars,
+  FaTimes,
+  FaBell
 } from 'react-icons/fa';
-import { API_BASE_URL } from '../config';
 
-export const Header = ({ onToggleSidebar }) => {
+import { API_BASE_URL } from '../config';
+export const Header = ({ onToggleSidebar, sidebarOpen = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [usuario, setUsuario] = useState(null);
 
@@ -77,26 +79,37 @@ const handleLogout = async () => {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 px-3 md:px-6 flex items-center justify-between sticky top-0 z-20 shadow-sm gap-2">
+    <header className="h-16 bg-white border-b border-gray-200 px-3 md:px-6 flex items-center justify-between sticky top-0 z-[35] shadow-sm gap-2">
 
 {/* Lado Izquierdo: Botón menú + Título Completo Permanente */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <button
           type="button"
           onClick={onToggleSidebar}
-          aria-label="Mostrar u ocultar menú"
-          className="text-xl text-[#112F5C] p-2 hover:bg-gray-100 rounded-md"
+          aria-label={sidebarOpen ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={sidebarOpen}
+          className="text-xl text-[#112F5C] p-2 hover:bg-gray-100 rounded-md shrink-0"
         >
-          <FaBars />
+          {sidebarOpen ? <FaTimes /> : <FaBars />}
         </button>
 
         <span className="text-xs sm:text-sm md:text-base font-bold text-[#112F5C] tracking-wide whitespace-normal leading-tight">
-          Sistema de Aplicación de Resultado de Aprendizaje
+          Sistema de Gestión de Resultado de Aprendizaje
         </span>
       </div>
 
       {/* Menú de Perfil (Lado Derecho) */}
       <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        {/* Notificaciones */}
+        <button
+          type="button"
+          aria-label="Notificaciones"
+          className="relative p-2 text-[#112F5C] hover:bg-gray-100 rounded-xl transition-colors"
+        >
+          <FaBell className="text-lg" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#B3282D] rounded-full border border-white" />
+        </button>
+
         <div className="relative">
 
           <button

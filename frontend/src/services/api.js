@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../config';
 
 const baseURL = API_BASE_URL;
+export const apiBaseURL = API_BASE_URL;
 
 export async function fetchJSON(path, options = {}) {
   const response = await fetch(`${baseURL}${path}`, {

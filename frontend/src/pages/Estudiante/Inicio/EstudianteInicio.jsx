@@ -9,8 +9,8 @@ import {
   FaTimes,
   FaInfoCircle
 } from "react-icons/fa";
-import { API_BASE_URL } from '../../../config';
 
+import { API_BASE_URL } from '../../../config';
 export default function EstudianteInicio() {
   const [estudiante, setEstudiante] = useState(null);
   const [cargando, setCargando] = useState(true);

@@ -37,8 +37,9 @@ passport.use(
         if (resultado.rows.length === 0) {
 
           console.log("Usuario no registrado:", correo);
-
-          return done(null, false);
+          return done(null, false, {
+            mensaje: "Usted no se encuentra vinculado al Sistema RAP."
+          });
         }
 
         const usuario = resultado.rows[0];

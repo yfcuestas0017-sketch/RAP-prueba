@@ -3,7 +3,6 @@ const router = express.Router();
 
 const {
     obtenerPerfil,
-    actualizarCredenciales
 } = require("../../controllers/docente/docentePerfilController");
 
 const 

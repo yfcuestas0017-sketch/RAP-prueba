@@ -25,7 +25,7 @@ export const SidebarDocente = ({ isOpen = true }) => {
   };
 
   return (
-    <aside className={`app-sidebar ${isOpen ? 'app-sidebar-open' : 'app-sidebar-closed'} w-64 bg-[#112F5C] text-white flex flex-col h-screen sticky top-0 shadow-xl z-20`}>
+    <aside className={`app-sidebar ${isOpen ? 'app-sidebar-open' : 'app-sidebar-closed'} w-64 bg-[#112F5C] text-white flex flex-col h-screen sticky top-0 shadow-xl z-20 shrink-0`}>
       
       {/* 1. SECCIÓN LOGO INSTITUCIONAL */}
       <div className="h-16 px-4 flex items-center gap-3 border-b border-blue-900/30 mb-2">
@@ -38,7 +38,7 @@ export const SidebarDocente = ({ isOpen = true }) => {
         </div>
 
         <div>
-          <h1 className="font-bold text-base tracking-wide leading-tight text-white">SI RAP</h1>
+          <h1 className="font-bold text-base tracking-wide leading-tight text-white">G-RAP</h1>
           <p className="text-[10px] text-blue-200 font-medium mt-0.5">Universidad CESMAG</p>
         </div>
       </div>

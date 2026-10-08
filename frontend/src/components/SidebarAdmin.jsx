@@ -23,7 +23,7 @@ export const SidebarAdmin = ({ isOpen = true }) => {
   };
 
   return (
-<aside className={`app-sidebar ${isOpen ? 'app-sidebar-open' : 'app-sidebar-closed'} w-64 bg-[#112F5C] text-white flex flex-col h-screen sticky top-0 shadow-xl z-20`}>
+<aside className={`app-sidebar ${isOpen ? 'app-sidebar-open' : 'app-sidebar-closed'} w-64 bg-[#112F5C] text-white flex flex-col h-screen sticky top-0 shadow-xl z-20 shrink-0`}>
       {/* SECCIÓN LOGO */}
       <div className="h-16 px-4 flex items-center gap-3 border-b border-blue-900/30 mb-4">
         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow overflow-hidden border border-gray-200">
@@ -34,7 +34,7 @@ export const SidebarAdmin = ({ isOpen = true }) => {
           />
         </div>
         <div>
-          <h1 className="font-bold text-base tracking-wide leading-tight text-white">SI RAP</h1>
+          <h1 className="font-bold text-base tracking-wide leading-tight text-white">G-RAP</h1>
           <p className="text-[10px] text-blue-200 font-medium mt-0.5">Universidad CESMAG</p>
         </div>
       </div>

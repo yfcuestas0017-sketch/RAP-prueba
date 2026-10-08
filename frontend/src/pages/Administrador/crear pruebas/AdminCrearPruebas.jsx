@@ -13,6 +13,7 @@ import {
   FaListUl
 } from 'react-icons/fa';
 
+import { API_BASE_URL } from '../../../config';
 const ESTADOS = ['BORRADOR', 'ACTIVA', 'CERRADA', 'ELIMINADA'];
 
 const agruparGruposPorDocente = (filas) => {
@@ -38,8 +39,8 @@ export default function AdminCrearPruebas() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const API = 'http://localhost:3000/api/admin/evaluaciones';
-  const API_USUARIOS = 'http://localhost:3000/api/adminUsuarios';
+  const API = `${API_BASE_URL}/api/admin/evaluaciones`;
+  const API_USUARIOS = `${API_BASE_URL}/api/adminUsuarios`;
 
   const [momentos, setMomentos] = useState([]);
   const [grupos, setGrupos] = useState([]);

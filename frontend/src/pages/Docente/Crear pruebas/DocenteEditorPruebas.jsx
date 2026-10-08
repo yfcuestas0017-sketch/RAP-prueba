@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaSyncAlt, FaExclamationCircle, FaCheckCircle, FaCheck } from 'react-icons/fa';
 
+import { API_BASE_URL } from '../../../config';
 const OPCIONES_INICIALES = [
   { texto: '' },
   { texto: '' },
@@ -34,7 +35,7 @@ export default function DocenteEditorPrueba() {
   const { idEvaluacion } = useParams();
   const navigate = useNavigate();
 
-  const API = 'http://localhost:3000/api/docente/evaluaciones';
+  const API = `${API_BASE_URL}/api/docente/evaluaciones`;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -227,7 +228,7 @@ export default function DocenteEditorPrueba() {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-700">Semestre {evaluacion.semestre} — {evaluacion.momento}</p>
-            <p className="text-xs text-gray-500">Grupo {evaluacion.grupo} — {evaluacion.jornada}</p>
+            <p className="text-xs text-gray-500">{evaluacion.grupo} — {evaluacion.jornada}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
             <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${colorEstado(evaluacion.estado)}`}>

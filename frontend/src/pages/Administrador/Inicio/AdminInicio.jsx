@@ -11,6 +11,7 @@ import {
   FaPlus
 } from "react-icons/fa";
 
+import { API_BASE_URL } from '../../../config';
 export default function AdminInicio() {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,7 +29,7 @@ export default function AdminInicio() {
       setLoading(true);
       setError("");
 
-      const respuesta = await fetch("http://localhost:3000/api/users/usuarios", {
+      const respuesta = await fetch(`${API_BASE_URL}/api/users/usuarios`, {
         method: "GET",
         credentials: "include",
         headers: {
@@ -73,7 +74,7 @@ export default function AdminInicio() {
 
     try {
       setGuardando(true);
-      const respuesta = await fetch("http://localhost:3000/api/admin/crear", {
+      const respuesta = await fetch(`${API_BASE_URL}/api/admin/crear`, {
         method: "POST",
         credentials: "include",
         headers: {

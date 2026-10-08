@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSyncAlt, FaExclamationCircle, FaClock, FaBook, FaClipboardList } from 'react-icons/fa';
 
+import { API_BASE_URL } from '../../../config';
 export default function EstudiantePruebas() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -14,7 +15,7 @@ export default function EstudiantePruebas() {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch('http://localhost:3000/api/estudiante/evaluaciones', {
+      const res = await fetch(`${API_BASE_URL}/api/estudiante/evaluaciones`, {
         method: 'GET',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
@@ -78,7 +79,7 @@ export default function EstudiantePruebas() {
         <h1 className="text-2xl font-bold text-[#112F5C]">Pruebas RAP</h1>
         <p className="text-xs text-gray-500 mt-0.5">
           {estudiante
-            ? `Semestre ${estudiante.semestre} — Grupo ${estudiante.grupo}: ${evaluaciones.length} evaluación(es) habilitada(s) para su grupo.`
+            ? `Semestre ${estudiante.semestre} — ${estudiante.grupo}: ${evaluaciones.length} evaluación(es) habilitada(s) para su grupo.`
             : 'Verificando las evaluaciones habilitadas para su grupo.'}
         </p>
       </div>
@@ -105,7 +106,7 @@ export default function EstudiantePruebas() {
                   <div>
                     <h3 className="text-xs font-bold text-[#112F5C]">{ev.nombre}</h3>
                     <p className="text-[11px] text-gray-500 mt-0.5">
-                      {ev.momento} — Semestre {ev.semestre} · Grupo {ev.grupo} ({ev.jornada})
+                      {ev.momento} — Semestre {ev.semestre} · {ev.grupo} ({ev.jornada})
                     </p>
                   </div>
                   <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-4 py-1.5 rounded-xl self-start">

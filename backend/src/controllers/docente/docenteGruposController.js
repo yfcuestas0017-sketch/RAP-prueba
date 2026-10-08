@@ -1,23 +1,22 @@
 const pool = require("../../config/database");
 const obtenerGrupos = async (req, res) => {
-
   try {
-
     const idDocente = req.user.id_user;
 
-    const resultado = await pool.query(`
-      SELECT
-        g."id_grupo",
-        g."nombre",
-        g."codigo_jornada",
-        g."jornada",
+    const resultado = await pool.query(
+      `
+      SELECT 
+        g."id_grupo", 
+        g."nombre", 
+        g."codigo_jornada", 
+        g."jornada", 
         g."periodo",
 
-        s."id_semestre",
-        s."numero" AS semestre,
+        s."id_semestre", 
+        s."numero" AS semestre, 
         s."nombre" AS nombre_semestre,
 
-        p."id_programa",
+        p."id_programa", 
         p."nombre" AS programa
 
       FROM "usuario_grupo" ug
@@ -34,63 +33,50 @@ const obtenerGrupos = async (req, res) => {
       WHERE ug."id_user" = $1
         AND ug."estado" = TRUE
 
-      ORDER BY
+      ORDER BY 
         s."numero",
         g."nombre"
-    `, [idDocente]);
-
+      `,
+      [idDocente]
+    );
 
     return res.status(200).json({
-
       success: true,
-
       grupos: resultado.rows
-
     });
 
-
   } catch (error) {
-
     console.error(
       "Error obteniendo grupos del docente:",
       error
     );
 
-
     return res.status(500).json({
-
       success: false,
-
       mensaje: "Error obteniendo los grupos"
-
     });
-
   }
-
 };
 
 const obtenerGrupo = async (req, res) => {
-
   try {
-
     const idDocente = req.user.id_user;
-
     const idGrupo = req.params.id;
 
-
-    const resultado = await pool.query(`
-      SELECT
-        g."id_grupo",
-        g."nombre",
-        g."codigo_jornada",
-        g."jornada",
+    const resultado = await pool.query(
+      `
+      SELECT 
+        g."id_grupo", 
+        g."nombre", 
+        g."codigo_jornada", 
+        g."jornada", 
         g."periodo",
 
-        s."id_semestre",
-        s."numero" AS semestre,
+        s."id_semestre", 
+        s."numero" AS semestre, 
         s."nombre" AS nombre_semestre,
 
-        p."id_programa",
+        p."id_programa", 
         p."nombre" AS programa
 
       FROM "usuario_grupo" ug
@@ -107,53 +93,104 @@ const obtenerGrupo = async (req, res) => {
       WHERE ug."id_user" = $1
         AND ug."id_grupo" = $2
         AND ug."estado" = TRUE
-
-    `, [idDocente, idGrupo]);
-
+      `,
+      [idDocente, idGrupo]
+    );
 
     if (resultado.rows.length === 0) {
-
       return res.status(403).json({
-
         success: false,
-
         mensaje: "No tiene acceso a este grupo"
-
       });
-
     }
 
-
     return res.status(200).json({
-
       success: true,
-
       grupo: resultado.rows[0]
-
     });
 
-
   } catch (error) {
-
     console.error(
       "Error obteniendo grupo:",
       error
     );
 
-
     return res.status(500).json({
-
       success: false,
       mensaje: "Error obteniendo el grupo"
-
     });
-
   }
-
 };
 
+const obtenerEstudiantesGrupo = async (req, res) => {
+  try {
+    const idDocente = req.user.id_user;
+    const idGrupo = req.params.id;
+    const verificarGrupo = await pool.query(
+      `
+      SELECT 1
+      FROM "usuario_grupo"
+      WHERE "id_user" = $1
+        AND "id_grupo" = $2
+        AND "estado" = TRUE
+      `,
+      [idDocente, idGrupo]
+    );
+
+    if (verificarGrupo.rows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        mensaje: "No tiene acceso a este grupo"
+      });
+    }
+    const resultado = await pool.query(
+      `
+      SELECT
+        u."id_user",
+        u."id_user_institucional",
+        u."nombre",
+        u."apellido",
+        u."correo",
+        u."estado",
+        u."id_rol"
+
+      FROM "usuario_grupo" ug
+
+      INNER JOIN "usuarios" u
+        ON ug."id_user" = u."id_user"
+
+      WHERE ug."id_grupo" = $1
+        AND ug."estado" = TRUE
+        AND u."id_rol" = 6
+
+      ORDER BY
+        u."apellido" ASC,
+        u."nombre" ASC
+      `,
+      [idGrupo]
+    );
+
+    return res.status(200).json({
+      success: true,
+      estudiantes: resultado.rows,
+      total: resultado.rows.length
+    });
+
+  } catch (error) {
+    console.error(
+      "Error obteniendo estudiantes del grupo:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      mensaje: "Error obteniendo los estudiantes del grupo"
+    });
+  }
+};
 
 module.exports = {
   obtenerGrupos,
-  obtenerGrupo
+  obtenerGrupo,
+  obtenerEstudiantesGrupo
 };

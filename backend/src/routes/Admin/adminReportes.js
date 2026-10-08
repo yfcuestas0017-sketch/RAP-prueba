@@ -4,7 +4,8 @@ const router = express.Router();
 
 const {
     obtenerReportes,
-    obtenerFiltros
+    obtenerFiltros,
+    exportarReporte
 } = require("../../controllers/admin/adminRepoController");
 
 const 
@@ -12,9 +13,9 @@ const
 
 
 router.get(
-    "/",
+    "/exportar/:formato",
     verificarAdmin,
-    obtenerReportes
+    exportarReporte
 );
 
 
@@ -22,6 +23,13 @@ router.get(
     "/filtros",
     verificarAdmin,
     obtenerFiltros
+);
+
+
+router.get(
+    "/",
+    verificarAdmin,
+    obtenerReportes
 );
 
 

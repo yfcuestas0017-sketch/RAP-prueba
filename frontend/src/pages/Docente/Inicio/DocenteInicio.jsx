@@ -8,10 +8,13 @@ import {
   FaPlus,
   FaCommentDots,
   FaExclamationCircle,
-  FaSearch
+  FaSearch,
+  FaExclamationTriangle,
+  FaLightbulb,
+  FaGraduationCap
 } from "react-icons/fa";
-import { API_BASE_URL } from '../../../config';
 
+import { API_BASE_URL } from '../../../config';
 export default function DocenteInicio() {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,11 +94,13 @@ export default function DocenteInicio() {
 
   const estadisticas = datos?.estadisticas || {
     totalGrupos: 0,
+    totalGruposInactivos: 0,
     pendientesCalificar: 0,
     archivosRecibidos: 0
   };
 
   const proyectos = datos?.proyectos || [];
+  const grupos = datos?.grupos || [];
 
   const proyectosFiltrados = proyectos.filter((proyecto) => {
     const texto = busqueda.toLowerCase();
@@ -109,6 +114,14 @@ export default function DocenteInicio() {
       `${proyecto.codigo_grupo || ""}`.toLowerCase().includes(texto)
     );
   });
+
+  const esProyectoGrado = (p) =>
+    p.especializacion === true || /grado|tesis/i.test(p.tipo_proyecto || "");
+
+  const proyectosGrado = proyectosFiltrados.filter(esProyectoGrado);
+  const proyectosIntegradores = proyectosFiltrados.filter(
+    (p) => !esProyectoGrado(p)
+  );
 
   return (
     <div className="w-full animate-fade-in space-y-8">
@@ -140,30 +153,79 @@ export default function DocenteInicio() {
               <FaUsers />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-gray-800 uppercase mb-1">Gestión carga docente</h3>
-              <p className="text-2xl font-bold text-[#112F5C]">{estadisticas.totalGrupos} Grupos</p>
+              <h3 className="text-xs font-bold text-gray-800 uppercase mb-1">Grupos asignados</h3>
+              <p className="text-2xl font-bold text-[#112F5C]">
+                {estadisticas.totalGrupos}{" "}
+                {estadisticas.totalGruposInactivos > 0 && (
+                  <span className="text-sm text-amber-600 font-bold">
+                    · {estadisticas.totalGruposInactivos} inactivos
+                  </span>
+                )}{" "}
+                Grupos
+              </p>
               <p className="text-[11px] text-gray-400 mt-1 leading-tight">Grupos asignados activos</p>
             </div>
           </div>
+
+          {estadisticas.totalGruposInactivos > 0 && (
+            <div className="flex items-center gap-2 mt-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2 text-[11px] font-semibold">
+              <FaExclamationTriangle className="text-amber-600 shrink-0" />
+              Hay {estadisticas.totalGruposInactivos} grupo(s) inactivo(s), revisar asignación.
+            </div>
+          )}
+
+          {grupos.length > 0 && (
+            <div className="mt-3 space-y-1.5 max-h-40 overflow-y-auto pr-1">
+              {grupos.map((g) => {
+                const activo = g.estado_grupo !== false;
+                return (
+                  <div
+                    key={g.id_grupo}
+                    className="flex items-center justify-between gap-2 text-[11px]"
+                  >
+                    <span className="font-semibold text-[#112F5C] truncate">
+                      {g.nombre}
+                      {g.jornada ? (
+                        <span className="text-gray-400 font-normal"> — {g.jornada}</span>
+                      ) : null}
+                    </span>
+                    {activo ? (
+                      <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                        Activo
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0">
+                        <FaExclamationTriangle className="text-[10px]" /> Inactivo
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <Link to="/docente/grupos" className="text-xs font-bold text-[#112F5C] mt-4 flex items-center gap-1 hover:underline">
             Ver grupos <span className="text-[10px]">&rarr;</span>
           </Link>
         </div>
 
-        {/* Card 2: Pendientes por Calificar */}
+        {/* Card 2: Proyectos */}
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-full bg-red-50 text-[#B3282D] flex items-center justify-center text-xl shrink-0">
               <FaClipboardList />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-gray-800 uppercase mb-1">Pendientes por calificar</h3>
-              <p className="text-2xl font-bold text-[#B3282D]">{estadisticas.pendientesCalificar} Envíos</p>
-              <p className="text-[11px] text-gray-400 mt-1 leading-tight">Evaluaciones por revisar</p>
+              <h3 className="text-xs font-bold text-gray-800 uppercase mb-1">Proyectos</h3>
+              <p className="text-2xl font-bold text-[#B3282D]">{estadisticas.archivosRecibidos} Proyectos</p>
+              <p className="text-[11px] text-gray-400 mt-1 leading-tight">Proyectos recibidos en el periodo</p>
             </div>
           </div>
-          <Link to="/docente/pendientes" className="text-xs font-bold text-[#112F5C] mt-4 flex items-center gap-1 hover:underline">
-            Ver pendientes <span className="text-[10px]">&rarr;</span>
+          <p className="text-[11px] text-red-600 font-semibold mt-3">
+            {estadisticas.pendientesCalificar} enviados por calificar
+          </p>
+          <Link to="/docente/reportes" className="text-xs font-bold text-[#112F5C] mt-3 flex items-center gap-1 hover:underline">
+            Ver proyectos <span className="text-[10px]">&rarr;</span>
           </Link>
         </div>
 
@@ -277,6 +339,90 @@ export default function DocenteInicio() {
                 </tbody>
               </table>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 4. PROYECTOS POR TIPO: INTERESTRUCTURANTE vs TESIS / PROYECTO DE GRADO */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-[#112F5C]">Proyectos por Tipo</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Clasificación de los proyectos recibidos entre interestructurantes y tesis / proyecto de grado.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Interestructurante */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 bg-[#112F5C] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaLightbulb className="text-lg" />
+                <h3 className="text-sm font-bold">Proyectos Interestructurantes</h3>
+              </div>
+              <span className="bg-white/20 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                {proyectosIntegradores.length}
+              </span>
+            </div>
+
+            <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+              {proyectosIntegradores.length === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  <FaLightbulb className="text-3xl mx-auto mb-2 text-gray-300" />
+                  <p className="text-xs font-semibold">No hay proyectos interestructurantes registrados.</p>
+                </div>
+              ) : (
+                proyectosIntegradores.map((p) => (
+                  <div key={p.id_proyecto} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#112F5C] truncate">{p.nombre}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {p.estudiante_nombre} {p.estudiante_apellido} — {p.grupo || "Sin grupo"}
+                      </p>
+                    </div>
+                    <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0">
+                      {p.estado === true ? "Recibido" : "Pendiente"}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Tesis / Proyecto de Grado */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="px-5 py-4 bg-[#B3282D] text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <FaGraduationCap className="text-lg" />
+                <h3 className="text-sm font-bold">Tesis / Proyecto de Grado</h3>
+              </div>
+              <span className="bg-white/20 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                {proyectosGrado.length}
+              </span>
+            </div>
+
+            <div className="divide-y divide-gray-100 max-h-72 overflow-y-auto">
+              {proyectosGrado.length === 0 ? (
+                <div className="text-center py-10 text-gray-400">
+                  <FaGraduationCap className="text-3xl mx-auto mb-2 text-gray-300" />
+                  <p className="text-xs font-semibold">No hay tesis o proyectos de grado registrados.</p>
+                </div>
+              ) : (
+                proyectosGrado.map((p) => (
+                  <div key={p.id_proyecto} className="px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#112F5C] truncate">{p.nombre}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {p.estudiante_nombre} {p.estudiante_apellido} — {p.grupo || "Sin grupo"}
+                      </p>
+                    </div>
+                    <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2.5 py-1 rounded-lg shrink-0">
+                      {p.estado === true ? "Recibido" : "Pendiente"}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>

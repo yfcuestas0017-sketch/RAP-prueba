@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FaUser, 
-  FaSyncAlt, 
-  FaExclamationCircle, 
+import {
+  FaSyncAlt,
+  FaExclamationCircle,
   FaCheckCircle,
-  FaChartBar,
-  FaGraduationCap,
   FaInfoCircle
 } from 'react-icons/fa';
 import "./EstudiantePerfil.css";
-import { API_BASE_URL } from '../../../config';
 
+import { API_BASE_URL } from '../../../config';
 export default function EstudiantePerfil() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -19,7 +16,6 @@ export default function EstudiantePerfil() {
   // Datos reales desde PostgreSQL
   const [perfil, setPerfil] = useState({
     nombre: '',
-    documento: '',
     correo: '',
     telefono: '',
     programa: '',
@@ -31,21 +27,6 @@ export default function EstudiantePerfil() {
     rol: '',
     estado: '',
     semestre: ''
-  });
-
-  const [progresoRap, setProgresoRap] = useState({
-    rapsEvaluados: '0 de 0 RAPs',
-    porcentajeAvance: '0% Avance',
-    promedioGeneral: '0.0',
-    estadoPromedio: 'Sin Registro',
-    proyectoIntegrador: 'No Asignado',
-    estadoProyecto: 'Pendiente'
-  });
-
-  const [seguridad, setSeguridad] = useState({
-    ultimoAcceso: '',
-    ip: '',
-    dispositivo: ''
   });
 
   const cargarPerfilEstudiante = async () => {
@@ -69,7 +50,6 @@ export default function EstudiantePerfil() {
         const p = resultado.perfil;
         setPerfil({
           nombre: `${p.nombre || ''} ${p.apellido || ''}`.trim(),
-          documento: p.id_user_institucional || '—',
           correo: p.correo || '—',
           telefono: p.telefono || '—',
           programa: p.programa || '—',
@@ -83,8 +63,6 @@ export default function EstudiantePerfil() {
           semestre: p.semestre ? `Semestre ${p.semestre}` : '—'
         });
       }
-      if (resultado.progreso) setProgresoRap(resultado.progreso);
-      if (resultado.seguridad) setSeguridad(resultado.seguridad);
 
     } catch (err) {
       console.error('Error cargando perfil estudiante:', err);
@@ -140,7 +118,7 @@ export default function EstudiantePerfil() {
       {/* Título Principal */}
       <div>
         <h1 className="text-2xl font-bold text-[#112F5C]">Perfil del Estudiante y Progreso Académico</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Consulte su información académica institucional, código, avance de RAPs y registro de sesión.</p>
+        <p className="text-xs text-gray-500 mt-0.5">Consulte su información académica e institucional.</p>
       </div>
 
       {mensajeExito && (
@@ -178,11 +156,11 @@ export default function EstudiantePerfil() {
         </div>
       </div>
 
-      {/* Ficha Académica y Resumen RAP */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* Ficha Académica */}
+      <div className="grid grid-cols-1 gap-6 items-start">
         
         {/* Información Personal y Ficha Académica (solo lectura: el backend no expone endpoint de actualización) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b pb-3">
             <h3 className="text-sm font-bold text-[#112F5C]">Información Personal y Ficha Académica</h3>
             <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-full">
@@ -197,15 +175,6 @@ export default function EstudiantePerfil() {
                 type="text"
                 readOnly
                 value={perfil.nombre}
-                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Documento de Identidad:</label>
-              <input
-                type="text"
-                readOnly
-                value={perfil.documento}
                 className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
               />
             </div>
@@ -284,64 +253,8 @@ export default function EstudiantePerfil() {
             />
           </div>
         </div>
-
-        {/* Panel Resumen de Evaluación RAP */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">Resumen de Evaluación RAP</h3>
-
-          <div className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-gray-400 font-medium">RAPs Evaluados</p>
-              <h4 className="font-bold text-sm text-[#112F5C]">{progresoRap.rapsEvaluados}</h4>
-            </div>
-            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-              {progresoRap.porcentajeAvance}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-gray-400 font-medium">Nivel Promedio General</p>
-              <h4 className="font-bold text-sm text-emerald-700">{progresoRap.promedioGeneral}</h4>
-            </div>
-            <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-lg">
-              {progresoRap.estadoPromedio}
-            </span>
-          </div>
-
-          <div className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-gray-400 font-medium">Proyecto Integrador / VII</p>
-              <h4 className="font-bold text-xs text-[#112F5C]">{progresoRap.proyectoIntegrador}</h4>
-            </div>
-            <span className="bg-blue-100 text-[#112F5C] text-[10px] font-bold px-2.5 py-1 rounded-lg">
-              {progresoRap.estadoProyecto}
-            </span>
-          </div>
-
-          <button className="w-full py-2.5 bg-[#112F5C] hover:bg-blue-900 text-white font-bold rounded-xl text-xs transition-colors shadow">
-            Ver Competencias y Nivel RAP
-          </button>
-        </div>
-
       </div>
 
-      {/* Trazabilidad y Seguridad del Acceso */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-        <h3 className="text-sm font-bold text-[#112F5C]">Trazabilidad y Seguridad del Acceso</h3>
-        <p className="text-[11px] text-gray-400">Último Acceso Registrado:</p>
-        
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl text-xs font-mono text-gray-700">
-            {seguridad.ultimoAcceso || 'No registrado'} — IP: {seguridad.ip || '127.0.0.1'} ({seguridad.dispositivo || 'Navegador'})
-          </div>
-
-          <div className="bg-blue-50 border border-blue-100 text-blue-800 text-[11px] px-4 py-2 rounded-xl">
-            La gestión de la cuenta y contraseña de Estudiante es administrada por la Universidad a través del Portal Institucional.
-          </div>
-        </div>
       </div>
-
-    </div>
   );
 }

@@ -13,8 +13,8 @@ import {
   FaCalendarAlt,
   FaExclamationCircle
 } from "react-icons/fa";
-import { API_BASE_URL } from '../../config';
 
+import { API_BASE_URL } from '../../config';
 const DocenteInicio = () => {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);

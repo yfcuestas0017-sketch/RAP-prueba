@@ -31,7 +31,7 @@ const menuItems = [
   { title: 'Reportes', icon: <FaFileAlt />, path: '/DocenteReportes' }
 ];
 
-export const Sidebar = ({ currentPath = '/docente' }) => {
+export const Sidebar = ({ currentPath = '/docente', isOpen = true }) => {
   const [openSubmenus, setOpenSubmenus] = useState({});
 
   const toggleSubmenu = (index) => {
@@ -39,13 +39,13 @@ export const Sidebar = ({ currentPath = '/docente' }) => {
   };
 
   return (
-    <aside className="w-64 bg-[#112F5C] text-white flex flex-col h-screen sticky top-0 shadow-xl z-20">
+    <aside className={`app-sidebar ${isOpen ? 'app-sidebar-open' : 'app-sidebar-closed'} w-64 bg-[#112F5C] text-white flex flex-col h-screen sticky top-0 shadow-xl z-20 shrink-0`}>
       <div className="p-6 flex items-center gap-3 border-b border-blue-900/50">
         <div className="w-10 h-10 bg-[#B3282D] rounded-lg flex items-center justify-center font-bold text-xl shadow">
           U
         </div>
         <div>
-          <h1 className="font-bold text-lg leading-tight">Sistema RAP</h1>
+              <h1 className="font-bold text-lg leading-tight">G-RAP</h1>
           <p className="text-xs text-blue-200">UNICESMAG</p>
         </div>
       </div>

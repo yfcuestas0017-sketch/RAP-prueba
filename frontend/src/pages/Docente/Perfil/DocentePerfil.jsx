@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FaUser, 
-  FaBook, 
-  FaSyncAlt, 
-  FaExclamationCircle, 
+import {
+  FaUser,
+  FaSyncAlt,
+  FaExclamationCircle,
   FaCheckCircle,
   FaShieldAlt,
   FaClock,
@@ -11,8 +10,8 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import "./DocentePerfil.css";
-import { API_BASE_URL } from '../../../config';
 
+import { API_BASE_URL } from '../../../config';
 export default function DocentePerfil() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,23 +20,15 @@ export default function DocentePerfil() {
   // Datos reales desde PostgreSQL
   const [perfil, setPerfil] = useState({
     nombre: '',
-    documento: '',
     correo: '',
     telefono: '',
     codigoDocente: '',
-    facultadPrograma: '',
+    facultad: '',
+    programa: '',
     horarioAtencion: '',
-    oficina: '',
     rol: '',
     estado: '',
     cargo: ''
-  });
-
-  const [asignaturas, setAsignaturas] = useState([]);
-  const [seguridad, setSeguridad] = useState({
-    ultimoAcceso: '',
-    ip: '',
-    dispositivo: ''
   });
 
   const cargarPerfilDocente = async () => {
@@ -61,20 +52,17 @@ export default function DocentePerfil() {
         const p = resultado.perfil;
         setPerfil({
           nombre: `${p.nombre || ''} ${p.apellido || ''}`.trim(),
-          documento: p.id_user_institucional || '—',
           correo: p.correo || '—',
           telefono: p.telefono || '—',
-          codigoDocente: p.codigo_docente || '—',
-          facultadPrograma: p.facultad_programa || '—',
+          codigoDocente: p.id_user_institucional || p.codigo_docente || '—',
+          facultad: p.facultad || '—',
+          programa: p.programa || '—',
           horarioAtencion: p.horario_atencion || '—',
-          oficina: p.oficina || '—',
           rol: p.rol || '—',
           estado: p.estado === true ? 'Activo' : p.estado === false ? 'Inactivo' : '—',
           cargo: p.tipo_contrato || '—'
         });
       }
-      if (resultado.asignaturas) setAsignaturas(resultado.asignaturas);
-      if (resultado.seguridad) setSeguridad(resultado.seguridad);
 
     } catch (err) {
       console.error('Error cargando perfil docente:', err);
@@ -130,7 +118,7 @@ export default function DocentePerfil() {
       {/* Encabezado Principal */}
       <div>
         <h1 className="text-2xl font-bold text-[#112F5C]">Perfil del Docente y Carga Académica</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Consulte su información personal institucional, asignaturas a cargo y registro de sesión.</p>
+        <p className="text-xs text-gray-500 mt-0.5">Consulte su información personal e institucional.</p>
       </div>
 
       {mensajeExito && (
@@ -148,7 +136,7 @@ export default function DocentePerfil() {
           </div>
           <div>
             <h2 className="text-lg font-bold text-[#112F5C]">{perfil.nombre || 'Docente'}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{perfil.facultadPrograma || 'Universidad CESMAG'}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{perfil.facultad || perfil.programa || 'Universidad CESMAG'}</p>
             <div className="flex flex-wrap gap-2 mt-2">
               <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-3 py-0.5 rounded-full">
                 {perfil.rol || 'Rol: Docente'}
@@ -173,11 +161,11 @@ export default function DocentePerfil() {
         </div>
       </div>
 
-      {/* Bloque de Información Personal y Asignaturas */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      {/* Bloque de Información Personal */}
+      <div className="grid grid-cols-1 gap-6 items-start">
         
         {/* Datos Docente (solo lectura: el backend no expone endpoint de actualización) */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b pb-3">
             <h3 className="text-sm font-bold text-[#112F5C]">Información Docente e Institucional</h3>
             <span className="flex items-center gap-1.5 text-[10px] font-semibold text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-full">
@@ -192,15 +180,6 @@ export default function DocentePerfil() {
                 type="text"
                 readOnly
                 value={perfil.nombre}
-                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Documento de Identidad:</label>
-              <input
-                type="text"
-                readOnly
-                value={perfil.documento}
                 className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
               />
             </div>
@@ -229,79 +208,37 @@ export default function DocentePerfil() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Facultad / Programa:</label>
+              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Facultad:</label>
               <input
                 type="text"
                 readOnly
-                value={perfil.facultadPrograma}
+                value={perfil.facultad}
                 className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Horario de Atención / Asesoría:</label>
+              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Programa:</label>
               <input
                 type="text"
                 readOnly
-                value={perfil.horarioAtencion}
+                value={perfil.programa}
                 className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-gray-700 mb-1">Oficina / Cubículo Institucional:</label>
+            <label className="block text-[11px] font-semibold text-gray-700 mb-1">Horario de Atención:</label>
             <input
               type="text"
               readOnly
-              value={perfil.oficina}
+              value={perfil.horarioAtencion}
               className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
             />
           </div>
         </div>
-
-        {/* Panel Lateral: Asignaturas Asignadas */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">Asignaturas Asignadas (2026-2)</h3>
-
-          {asignaturas.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <FaBook className="text-3xl mx-auto mb-2 text-gray-300" />
-              <p className="text-xs font-semibold text-gray-500">Sin asignaturas registradas actualmente.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {asignaturas.map((asig, idx) => (
-                <div key={asig.id || idx} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-xs text-[#112F5C]">{asig.nombre}</h4>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{asig.grupo}</p>
-                  </div>
-                  <span className="bg-blue-100 text-[#112F5C] text-[10px] font-bold px-2.5 py-1 rounded-lg">
-                    {asig.estudiantesCount || 0} Estudiantes
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Trazabilidad y Seguridad del Acceso */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-        <h3 className="text-sm font-bold text-[#112F5C]">Trazabilidad y Seguridad del Acceso</h3>
-        <p className="text-[11px] text-gray-400">Último Acceso Registrado:</p>
-        
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="bg-gray-50 border border-gray-200 px-4 py-2.5 rounded-xl text-xs font-mono text-gray-700">
-            {seguridad.ultimoAcceso || 'No registrado'} — IP: {seguridad.ip || '127.0.0.1'} ({seguridad.dispositivo || 'Navegador'})
-          </div>
-
-          <div className="bg-blue-50 border border-blue-100 text-blue-800 text-[11px] px-4 py-2 rounded-xl">
-            La gestión de contraseña para docentes es administrada por la Dirección de Tecnologías de la Información.
-          </div>
-        </div>
       </div>
-
-    </div>
   );
 }

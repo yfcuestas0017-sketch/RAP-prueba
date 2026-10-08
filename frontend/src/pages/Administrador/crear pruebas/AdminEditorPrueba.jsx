@@ -12,11 +12,12 @@ import {
   FaLockOpen
 } from 'react-icons/fa';
 
+import { API_BASE_URL } from '../../../config';
 export default function AdminEditorPrueba() {
   const { idPrueba } = useParams();
   const navigate = useNavigate();
 
-  const API = 'http://localhost:3000/api/admin/evaluaciones';
+  const API = `${API_BASE_URL}/api/admin/evaluaciones`;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -251,7 +252,7 @@ export default function AdminEditorPrueba() {
             <p className="text-xs font-semibold text-gray-700">
               Semestre {evaluacion.semestre} — {evaluacion.momento}
             </p>
-            <p className="text-xs text-gray-500">Grupo {evaluacion.grupo} — {evaluacion.jornada}</p>
+            <p className="text-xs text-gray-500">{evaluacion.grupo} — {evaluacion.jornada}</p>
             <p className="text-[11px] text-gray-500 mt-1">
               Inicio: {formatearFecha(evaluacion.fecha_inicio)} · Fin: {formatearFecha(evaluacion.fecha_fin)}
             </p>

@@ -6,14 +6,19 @@ import {
   FaGraduationCap, 
   FaClock, 
   FaArrowLeft,
-  FaBookOpen
+  FaBookOpen,
+  FaUserGraduate
 } from 'react-icons/fa';
 
+import { API_BASE_URL } from '../../../config';
 export default function DocenteMisGrupos() {
   const [grupos, setGrupos] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
+  const [estudiantesGrupo, setEstudiantesGrupo] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [loadingEstudiantes, setLoadingEstudiantes] = useState(false);
+  const [errorEstudiantes, setErrorEstudiantes] = useState('');
   const [error, setError] = useState('');
 
   // 1. Cargar la lista general de grupos
@@ -22,7 +27,7 @@ export default function DocenteMisGrupos() {
       setLoading(true);
       setError('');
 
-      const respuesta = await fetch('http://localhost:3000/api/docente/grupos', {
+      const respuesta = await fetch(`${API_BASE_URL}/api/docente/grupos`, {
         method: 'GET',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
@@ -47,11 +52,15 @@ export default function DocenteMisGrupos() {
     cargarGrupos();
   }, []);
 
-  // 2. Cargar detalle de un grupo específico
+  // 2. Cargar detalle de un grupo específico y sus estudiantes
   const handleVerGrupo = async (idGrupo) => {
     try {
       setLoadingDetalle(true);
-      const respuesta = await fetch(`http://localhost:3000/api/docente/grupos/${idGrupo}`, {
+      setGrupoSeleccionado(null);
+      setEstudiantesGrupo([]);
+      setErrorEstudiantes('');
+
+      const respuesta = await fetch(`${API_BASE_URL}/api/docente/grupos/${idGrupo}`, {
         method: 'GET',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' }
@@ -64,6 +73,39 @@ export default function DocenteMisGrupos() {
       }
 
       setGrupoSeleccionado(datos.grupo);
+      setLoadingEstudiantes(true);
+
+      // Los estudiantes no bloquean la vista del grupo si fallan
+      try {
+        const respuestaEstudiantes = await fetch(`${API_BASE_URL}/api/docente/grupos/${idGrupo}/estudiantes`, {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        let datosEstudiantes = null;
+        try {
+          datosEstudiantes = await respuestaEstudiantes.json();
+        } catch (parseError) {
+          // La respuesta no es JSON (p.ej. Express devuelve HTML en un 404)
+          datosEstudiantes = null;
+        }
+
+        if (!respuestaEstudiantes.ok || !datosEstudiantes || !datosEstudiantes.success) {
+          throw new Error(
+            (datosEstudiantes && datosEstudiantes.mensaje) ||
+            `No se pudieron cargar los estudiantes (HTTP ${respuestaEstudiantes.status}). ` +
+            'Verifique que el endpoint GET /grupos/:id/estudiantes esté implementado.'
+          );
+        }
+
+        setEstudiantesGrupo(datosEstudiantes.estudiantes || []);
+      } catch (err) {
+        console.error('Error obteniendo estudiantes:', err);
+        setErrorEstudiantes(err.message);
+      } finally {
+        setLoadingEstudiantes(false);
+      }
     } catch (err) {
       alert(err.message);
     } finally {
@@ -120,7 +162,7 @@ export default function DocenteMisGrupos() {
                   {grupoSeleccionado.programa}
                 </span>
                 <h1 className="text-xl font-bold text-[#112F5C] mt-2">
-                  Grupo {grupoSeleccionado.nombre} — {grupoSeleccionado.nombre_semestre || `Semestre ${grupoSeleccionado.semestre}`}
+                  {grupoSeleccionado.nombre} — {grupoSeleccionado.nombre_semestre || `Semestre ${grupoSeleccionado.semestre}`}
                 </h1>
                 <p className="text-xs text-gray-500 mt-0.5">
                   Periodo Académico: {grupoSeleccionado.periodo} | Jornada: {grupoSeleccionado.jornada}
@@ -147,6 +189,75 @@ export default function DocenteMisGrupos() {
                 <p className="text-[10px] font-bold text-gray-400 uppercase">Periodo Vigente</p>
                 <p className="text-sm font-bold text-[#112F5C] mt-1">{grupoSeleccionado.periodo}</p>
               </div>
+            </div>
+
+            {/* ESTUDIANTES DEL GRUPO */}
+            <div className="border-t border-gray-100 pt-5 space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <FaUserGraduate className="text-[#112F5C]" />
+                  <div>
+                    <h2 className="text-sm font-bold text-[#112F5C]">Estudiantes del grupo</h2>
+                    <p className="text-[11px] text-gray-500">Listado de los estudiantes matriculados en este grupo académico.</p>
+                  </div>
+                </div>
+
+                {!loadingEstudiantes && !errorEstudiantes && (
+                  <span className="bg-[#112F5C] text-white text-[10px] font-bold px-3 py-1.5 rounded-full">
+                    {estudiantesGrupo.length} estudiantes
+                  </span>
+                )}
+              </div>
+
+              {loadingEstudiantes ? (
+                <div className="text-center py-8 text-gray-400">
+                  <FaSyncAlt className="text-xl text-[#112F5C] animate-spin mx-auto mb-2" />
+                  <p className="text-xs font-medium">Cargando estudiantes...</p>
+                </div>
+              ) : errorEstudiantes ? (
+                <div className="bg-red-50 border border-red-100 text-red-600 text-xs p-4 rounded-xl font-medium">
+                  {errorEstudiantes}
+                </div>
+              ) : estudiantesGrupo.length === 0 ? (
+                <div className="bg-gray-50 border border-gray-100 rounded-xl py-8 text-center text-gray-400 space-y-2">
+                  <FaUsers className="text-2xl mx-auto text-gray-300" />
+                  <p className="text-xs font-semibold text-gray-500">Este grupo todavía no tiene estudiantes registrados.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-gray-100 rounded-xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50 text-[10px] uppercase text-gray-400">
+                      <tr>
+                        <th className="px-4 py-3 font-bold">#</th>
+                        <th className="px-4 py-3 font-bold">Código</th>
+                        <th className="px-4 py-3 font-bold">Estudiante</th>
+                        <th className="px-4 py-3 font-bold">Semestre</th>
+                        <th className="px-4 py-3 font-bold">Programa</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {estudiantesGrupo.map((e, idx) => (
+                        <tr key={e.id_user} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-gray-400 font-semibold">{idx + 1}</td>
+                          <td className="px-4 py-3 font-bold text-[#112F5C] whitespace-nowrap">
+                            {e.codigo_estudiante || e.id_user_institucional || 'N/A'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-[#112F5C]">{e.nombre} {e.apellido}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{e.correo}</p>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                            {(e.semestre_actual || grupoSeleccionado.semestre)}.º
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {e.programa_academico || grupoSeleccionado.programa}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl text-xs text-[#112F5C]">
@@ -186,7 +297,7 @@ export default function DocenteMisGrupos() {
 
                     <div>
                       <h3 className="font-bold text-base text-[#112F5C] leading-snug">
-                        Grupo {g.nombre}
+                        {g.nombre}
                       </h3>
                       <p className="text-xs font-medium text-gray-500 mt-0.5">
                         {g.programa}

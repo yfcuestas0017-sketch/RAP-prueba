@@ -457,7 +457,7 @@ const obtenerCriteriosRAP = async (req, res) => {
                 p.enunciado,
                 p.puntaje,
 
-                p.id_criterio_evaluacion,
+                p.criterio_evaluacion,
 
                 ce.id_criterio_evaluacion,
                 ce.nombre AS criterio
@@ -466,7 +466,7 @@ const obtenerCriteriosRAP = async (req, res) => {
 
             LEFT JOIN criterios_evaluacion ce
                 ON ce.id_criterio_evaluacion =
-                   p.id_criterio_evaluacion
+                   p.criterio_evaluacion
 
             WHERE
                 p.id_evaluacion_rap = $1
