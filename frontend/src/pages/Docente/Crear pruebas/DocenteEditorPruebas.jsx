@@ -1,8 +1,8 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaSyncAlt, FaExclamationCircle, FaCheckCircle, FaCheck } from 'react-icons/fa';
 
-import { API_BASE_URL } from '../../../config';
 const OPCIONES_INICIALES = [
   { texto: '' },
   { texto: '' },

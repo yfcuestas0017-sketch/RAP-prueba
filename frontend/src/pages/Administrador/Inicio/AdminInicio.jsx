@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -11,7 +12,6 @@ import {
   FaPlus
 } from "react-icons/fa";
 
-import { API_BASE_URL } from '../../../config';
 export default function AdminInicio() {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);

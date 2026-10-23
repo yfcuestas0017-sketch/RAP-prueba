@@ -8,12 +8,14 @@ import logoUnicesmag from '../assets/Escudos_cesmag.png';
 export const SidebarDocente = ({ isOpen = true }) => {
   const location = useLocation();
   const currentPath = location.pathname;
+  const coincideRuta = (path) =>
+    currentPath === path || (path !== '/docente' && currentPath.startsWith(`${path}/`));
 
   const [openIndex, setOpenIndex] = useState(null);
 
   useEffect(() => {
     const activeParentIndex = menuDocente.findIndex(
-      (item) => item.submenu && item.submenu.some((sub) => sub.path === currentPath)
+      (item) => item.submenu && item.submenu.some((sub) => coincideRuta(sub.path))
     );
     if (activeParentIndex !== -1) {
       setOpenIndex(activeParentIndex);
@@ -49,8 +51,8 @@ export const SidebarDocente = ({ isOpen = true }) => {
           const hasSubmenu = Boolean(item.submenu);
           const isOpen = openIndex === index;
           const isParentActive = hasSubmenu
-            ? item.submenu.some((sub) => sub.path === currentPath)
-            : item.path === currentPath;
+            ? item.submenu.some((sub) => coincideRuta(sub.path))
+            : coincideRuta(item.path);
 
           return (
             <div key={index} className="rounded-2xl overflow-hidden shadow-sm">
@@ -60,7 +62,9 @@ export const SidebarDocente = ({ isOpen = true }) => {
                 }`}>
                   {/* Botón Principal con Submenú */}
                   <button
+                    type="button"
                     onClick={() => toggleSubmenu(index)}
+                    aria-expanded={isOpen}
                     className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold tracking-wide text-white bg-[#8B1A1A] hover:bg-[#721515] transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -78,7 +82,7 @@ export const SidebarDocente = ({ isOpen = true }) => {
                           key={subIdx}
                           to={sub.path}
                           className={`block text-xs font-semibold transition-all pl-6 ${
-                            sub.path === currentPath
+                            coincideRuta(sub.path)
                               ? 'font-bold underline !text-white'
                               : '!text-white/90 hover:!text-white hover:translate-x-1'
                           }`}

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import {
   FaUser,
@@ -11,7 +12,6 @@ import {
 } from 'react-icons/fa';
 import "./DocentePerfil.css";
 
-import { API_BASE_URL } from '../../../config';
 export default function DocentePerfil() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -21,14 +21,11 @@ export default function DocentePerfil() {
   const [perfil, setPerfil] = useState({
     nombre: '',
     correo: '',
-    telefono: '',
     codigoDocente: '',
     facultad: '',
     programa: '',
-    horarioAtencion: '',
     rol: '',
-    estado: '',
-    cargo: ''
+    estado: ''
   });
 
   const cargarPerfilDocente = async () => {
@@ -50,17 +47,20 @@ export default function DocentePerfil() {
 
       if (resultado.perfil) {
         const p = resultado.perfil;
+
+        // El backend entrega facultad y programa dentro del arreglo "programas"
+        const programas = Array.isArray(p.programas) ? p.programas : [];
+        const facultades = [...new Set(programas.map((x) => x.facultad).filter(Boolean))];
+        const nombresProgramas = [...new Set(programas.map((x) => x.programa).filter(Boolean))];
+
         setPerfil({
           nombre: `${p.nombre || ''} ${p.apellido || ''}`.trim(),
           correo: p.correo || '—',
-          telefono: p.telefono || '—',
           codigoDocente: p.id_user_institucional || p.codigo_docente || '—',
-          facultad: p.facultad || '—',
-          programa: p.programa || '—',
-          horarioAtencion: p.horario_atencion || '—',
+          facultad: facultades.length ? facultades.join(', ') : '—',
+          programa: nombresProgramas.length ? nombresProgramas.join(', ') : '—',
           rol: p.rol || '—',
-          estado: p.estado === true ? 'Activo' : p.estado === false ? 'Inactivo' : '—',
-          cargo: p.tipo_contrato || '—'
+          estado: p.estado === true ? 'Activo' : p.estado === false ? 'Inactivo' : '—'
         });
       }
 
@@ -144,9 +144,6 @@ export default function DocentePerfil() {
               <span className={`${perfil.estado === 'Activo' ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'} text-[10px] font-bold px-3 py-0.5 rounded-full`}>
                 {perfil.estado || 'Estado: Activo'}
               </span>
-              <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-3 py-0.5 rounded-full">
-                {perfil.cargo}
-              </span>
               {perfil.codigoDocente && perfil.codigoDocente !== '—' && (
                 <span className="bg-teal-100 text-teal-800 text-[10px] font-bold px-3 py-0.5 rounded-full">
                   Código: {perfil.codigoDocente}
@@ -195,15 +192,6 @@ export default function DocentePerfil() {
                 className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Teléfono de Contacto:</label>
-              <input
-                type="text"
-                readOnly
-                value={perfil.telefono}
-                className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
-              />
-            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -227,15 +215,6 @@ export default function DocentePerfil() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-[11px] font-semibold text-gray-700 mb-1">Horario de Atención:</label>
-            <input
-              type="text"
-              readOnly
-              value={perfil.horarioAtencion}
-              className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-600 focus:outline-none"
-            />
-          </div>
         </div>
       </div>
 

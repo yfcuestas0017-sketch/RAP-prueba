@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logoCesmag from "../../assets/logo_unicesmag.png";
 import logoGoogle from "../../assets/logo_google.jpg";
+import { useAuth } from "../../context/AuthContext.jsx";
 import "./login.css";
 
 const API_BASE_URL =
@@ -9,6 +10,7 @@ const API_BASE_URL =
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { refrescar } = useAuth();
   const [mostrarAdmin, setMostrarAdmin] = useState(false);
   const [usuarioAdmin, setUsuarioAdmin] = useState("");
   const [passwordAdmin, setPasswordAdmin] = useState("");
@@ -51,6 +53,7 @@ export default function Dashboard() {
       }
 
       if (data.rol === "ADMIN") {
+        await refrescar();
         navigate("/admin");
         return;
       }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   FaUserCircle,
@@ -10,57 +10,18 @@ import {
   FaTimes,
   FaBell
 } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext.jsx';
 
-import { API_BASE_URL } from '../config';
 export const Header = ({ onToggleSidebar, sidebarOpen = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [usuario, setUsuario] = useState(null);
+  const { usuario, cerrarSesion } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    const obtenerPerfil = async () => {
-      try {
-        const respuesta = await fetch(
-          `${API_BASE_URL}/api/auth/me`,
-          {
-            method: 'GET',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-
-        const datos = await respuesta.json();
-
-        if (respuesta.ok && datos.success) {
-          setUsuario(datos.usuario);
-        } else {
-          const sesionLocal = localStorage.getItem('usuario');
-          if (sesionLocal) {
-            setUsuario(JSON.parse(sesionLocal));
-          }
-        }
-      } catch (error) {
-        console.error('Error obteniendo perfil:', error);
-        const sesionLocal = localStorage.getItem('usuario');
-        if (sesionLocal) {
-          setUsuario(JSON.parse(sesionLocal));
-        }
-      }
-    };
-
-    obtenerPerfil();
-  }, []);
-
 const handleLogout = async () => {
-    try {
-      await fetch(`${API_BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    } finally {
-      navigate('/', { replace: true });
-    }
+    await cerrarSesion();
+    navigate('/', { replace: true });
   };
 
   const handleIrPerfil = () => {

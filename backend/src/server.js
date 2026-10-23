@@ -75,6 +75,15 @@ const docenteEvaluacionesRoutes = require("./routes/Docente/docenteEvaluaciones"
 const estudianteEvaluacionesRoutes = require("./routes/Estudiante/estdianteEvaluaciones");
 const adminSeguimientoRoutes = require("./routes/Admin/adminSeguimiento");
 const docenteGrupoRoutes = require("./routes/Docente/docenteGrupos");
+const docenteMicrocurriculoRoutes = require("./routes/Docente/microcurriculo");
+const estudiantePruebaRoutes = require("./routes/Estudiante/estudiantePrueba");
+const estudianteProyectosRoutes = require("./routes/Estudiante/estudianteProyectos");
+const docenteFichasRoutes = require("./routes/Docente/docenteFichas");
+const adminMicrocurriculoRoutes = require("./routes/Admin/adminMicrocurriculos");
+const adminFichasRoutes = require("./routes/Admin/adminFichas");
+const adminInterestructuranteRoutes = require("./routes/Admin/adminintere");
+const adminTrabajoGradoRoutes = require("./routes/Admin/adminGrado");
+const adminCatalogoRoutes = require("./routes/Admin/adminCatalogo");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", exportUsersRoutes);
@@ -94,6 +103,15 @@ app.use("/api/docente/evaluaciones", docenteEvaluacionesRoutes);
 app.use("/api/estudiante/evaluaciones", estudianteEvaluacionesRoutes);
 app.use("/api/admin/seguimiento", adminSeguimientoRoutes);
 app.use("/api/docente", docenteGrupoRoutes);
+app.use("/api/docente/microcurriculo", docenteMicrocurriculoRoutes);
+app.use("/api/estudiante/prueba", estudiantePruebaRoutes);
+app.use("/api/estudiante/proyecto", estudianteProyectosRoutes);
+app.use("/api/docente/fichas-desarrollo", docenteFichasRoutes);
+app.use("/api/admin/microcurriculo", adminMicrocurriculoRoutes);
+app.use("/api/admin/fichas-desarrollo", adminFichasRoutes);
+app.use("/api/admin/proyecto", adminInterestructuranteRoutes);
+app.use("/api/admin/trabajo-grado", adminTrabajoGradoRoutes);
+app.use("/api/admin/catalogos", adminCatalogoRoutes);
 
 
 const PORT = process.env.PORT || 3000;

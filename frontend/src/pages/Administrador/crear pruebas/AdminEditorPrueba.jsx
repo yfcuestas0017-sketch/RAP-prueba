@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -5,14 +6,12 @@ import {
   FaSyncAlt, 
   FaExclamationCircle, 
   FaCheckCircle, 
-  FaPlus,
   FaCheck,
   FaUserCheck,
   FaLock,
   FaLockOpen
 } from 'react-icons/fa';
 
-import { API_BASE_URL } from '../../../config';
 export default function AdminEditorPrueba() {
   const { idPrueba } = useParams();
   const navigate = useNavigate();
@@ -26,9 +25,6 @@ export default function AdminEditorPrueba() {
 
   const [evaluacion, setEvaluacion] = useState(null);
   const [raps, setRaps] = useState([]);
-  const [disponibles, setDisponibles] = useState([]);
-  const [idRapSeleccionado, setIdRapSeleccionado] = useState('');
-
   const [docentes, setDocentes] = useState([]);
   const [nuevoDocente, setNuevoDocente] = useState('');
 
@@ -56,18 +52,6 @@ export default function AdminEditorPrueba() {
       setEvaluacion(ev.evaluacion);
       setRaps(ev.raps || []);
       setNuevoDocente(String(ev.evaluacion.id_docente || ''));
-
-      // RAPs disponibles del semestre de la evaluación (los no vinculados aún)
-      const resDisponibles = await fetch(`${API}/raps/${ev.evaluacion.id_semestre}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const disp = await resDisponibles.json();
-      if (resDisponibles.ok) {
-        const agregados = new Set((ev.raps || []).map((r) => r.id_rap));
-        setDisponibles((disp.data || []).filter((r) => !agregados.has(r.id_rap)));
-      }
     } catch (err) {
       console.error('Error cargando editor de prueba:', err);
       setError(err.message);
@@ -83,31 +67,6 @@ export default function AdminEditorPrueba() {
   const mostrarExito = (mensaje) => {
     setMensajeExito(mensaje);
     setTimeout(() => setMensajeExito(''), 3000);
-  };
-
-  const handleAgregarRap = async () => {
-    if (!idRapSeleccionado) {
-      alert('Seleccione un RAP para agregar a la evaluación.');
-      return;
-    }
-    try {
-      setMensajeExito('');
-      const respuesta = await fetch(`${API}/${idPrueba}/raps`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_rap: Number(idRapSeleccionado) })
-      });
-
-      const res = await respuesta.json();
-      if (!respuesta.ok) throw new Error(res.mensaje || 'Error al agregar el RAP');
-
-      mostrarExito(res.mensaje || 'RAP agregado correctamente.');
-      setIdRapSeleccionado('');
-      cargarDetalle();
-    } catch (err) {
-      alert(err.message);
-    }
   };
 
   const handleCambiarDocente = async () => {
@@ -138,10 +97,6 @@ export default function AdminEditorPrueba() {
   };
 
   const handleCambiarEstado = async (estado) => {
-    if (estado === 'ACTIVA' && raps.length === 0) {
-      alert('Debe agregar al menos un RAP antes de publicar la evaluación.');
-      return;
-    }
     try {
       setGuardando(true);
       setMensajeExito('');
@@ -273,13 +228,15 @@ export default function AdminEditorPrueba() {
         
         {/* RAPs Vinculados a la Evaluación */}
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-          <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">RAPs Vinculados a la Evaluación</h3>
+            <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">RAPs Vinculados a la Evaluación</h3>
 
-          {raps.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <p className="text-xs font-semibold text-gray-500">Aún no hay RAPs vinculados a esta evaluación.</p>
-            </div>
-          ) : (
+            {raps.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <p className="text-xs font-semibold text-gray-500">
+                  Al asignar el docente a esta evaluación, los RAPs del semestre se vincularán automáticamente.
+                </p>
+              </div>
+            ) : (
             <div className="space-y-3">
               {raps.map((r) => (
                 <div key={r.id_evaluacion_rap} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50">
@@ -301,38 +258,6 @@ export default function AdminEditorPrueba() {
 
         {/* Panel de control */}
         <div className="space-y-4">
-          {/* Agregar RAP */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">Agregar RAP a la Evaluación</h3>
-
-            {disponibles.length === 0 ? (
-              <div className="text-center py-6 text-gray-400">
-                <p className="text-xs font-semibold text-gray-500">No hay RAPs disponibles del semestre.</p>
-              </div>
-            ) : (
-              <>
-                <select
-                  value={idRapSeleccionado}
-                  onChange={(e) => setIdRapSeleccionado(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#112F5C]"
-                >
-                  <option value="">Seleccione un RAP...</option>
-                  {disponibles.map((r) => (
-                    <option key={r.id_rap} value={r.id_rap}>
-                      {r.codigo_rap} — {r.nombre}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAgregarRap}
-                  className="w-full py-2 bg-gray-50 border border-dashed border-gray-300 hover:bg-gray-100 text-[#112F5C] text-xs font-bold rounded-xl transition flex items-center justify-center gap-2"
-                >
-                  <FaPlus /> Vincular RAP
-                </button>
-              </>
-            )}
-          </div>
-
           {/* Reasignar docente */}
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">

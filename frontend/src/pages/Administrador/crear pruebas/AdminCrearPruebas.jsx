@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -12,8 +13,8 @@ import {
   FaCheck,
   FaListUl
 } from 'react-icons/fa';
+import ApartadosPruebas, { PanelSaberProPendiente } from '../../shared/ApartadosPruebas.jsx';
 
-import { API_BASE_URL } from '../../../config';
 const ESTADOS = ['BORRADOR', 'ACTIVA', 'CERRADA', 'ELIMINADA'];
 
 const agruparGruposPorDocente = (filas) => {
@@ -36,6 +37,7 @@ const agruparGruposPorDocente = (filas) => {
 
 export default function AdminCrearPruebas() {
   const navigate = useNavigate();
+  const [tipoPrueba, setTipoPrueba] = useState('rap');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -295,7 +297,30 @@ export default function AdminCrearPruebas() {
         const nombreGrupo = grupo ? grupo.nombre : `grupo ${idGrupo}`;
 
         if (respuesta.ok && res && res.data && res.data.id_evaluacion) {
-          creadas.push({ id: res.data.id_evaluacion, grupo: nombreGrupo });
+          const idEvaluacion = res.data.id_evaluacion;
+          const rapsDelSemestre = rapsDeGrupo(grupo);
+          const vinculaciones = await Promise.all(rapsDelSemestre.map(async (rap, orden) => {
+            try {
+              const respuestaRap = await fetch(`${API}/${idEvaluacion}/raps`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_rap: Number(rap.id_rap), orden: orden + 1 })
+              });
+              const resRap = await respuestaRap.json().catch(() => null);
+              if (!respuestaRap.ok) {
+                throw new Error((resRap && (resRap.message || resRap.mensaje)) || `Error ${respuestaRap.status}`);
+              }
+              return null;
+            } catch (errorRap) {
+              return `${rap.codigo_rap || `RAP ${rap.id_rap}`}: ${errorRap.message}`;
+            }
+          }));
+          const erroresRaps = vinculaciones.filter(Boolean);
+          creadas.push({ id: idEvaluacion, grupo: nombreGrupo, erroresRaps });
+          if (erroresRaps.length) {
+            fallidas.push({ grupo: `${nombreGrupo} (vinculación de RAPs)`, motivo: erroresRaps.join('; ') });
+          }
         } else if (respuesta.status === 409 && res && res.id_evaluacion) {
           existentes.push({ id: res.id_evaluacion, grupo: nombreGrupo });
         } else {
@@ -316,7 +341,7 @@ export default function AdminCrearPruebas() {
       return;
     }
 
-    if (gruposSeleccionados.length === 1) {
+    if (gruposSeleccionados.length === 1 && creadas[0]?.erroresRaps?.length === 0) {
       const destino = creadas[0] || existentes[0];
       navigate(`/admin/evaluaciones/editor/${destino.id}`);
       return;
@@ -374,6 +399,11 @@ export default function AdminCrearPruebas() {
         <h1 className="text-2xl font-bold text-[#112F5C]">Gestión y Creación de Pruebas RAP por Semestre</h1>
         <p className="text-xs text-gray-500 mt-0.5">Cree evaluaciones a partir del docente, el momento de evaluación y los grupos que tiene asignados. El título y las preguntas los redacta el docente.</p>
       </div>
+
+      <ApartadosPruebas activo={tipoPrueba} onCambiar={setTipoPrueba} />
+
+      {tipoPrueba === 'rap' ? (
+      <div className="space-y-6">
 
       {/* FORMULARIO PASO 1 */}
       <form onSubmit={handleCrearPruebas} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
@@ -559,8 +589,8 @@ export default function AdminCrearPruebas() {
                 <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100">
                   <p className="text-[10px] text-gray-500 leading-relaxed">
                     Se creará <strong>{gruposElegidos.length}</strong> evaluación
-                    {gruposElegidos.length === 1 ? '' : 'es'}, una por grupo. Los RAPs se vinculan en el
-                    editor de cada prueba.
+                    {gruposElegidos.length === 1 ? '' : 'es'}, una por grupo. Todos los RAPs activos del
+                    semestre se agregan automÃ¡ticamente a cada evaluaciÃ³n.
                   </p>
                 </div>
               </div>
@@ -591,7 +621,7 @@ export default function AdminCrearPruebas() {
                     {bloque.lista.length} {bloque.etiqueta.toLowerCase()}:
                   </span>{' '}
                   <span className="text-gray-600">
-                    {bloque.lista.map((x) => x.grupo).join(', ')}
+                    {bloque.lista.map((x) => x.motivo ? `${x.grupo}: ${x.motivo}` : x.grupo).join(', ')}
                   </span>
                 </div>
               )
@@ -616,11 +646,13 @@ export default function AdminCrearPruebas() {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            disabled={creando}
+            disabled={creando || cargandoRaps}
             className="bg-[#008A52] hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-6 py-2.5 rounded-xl transition shadow flex items-center gap-2"
           >
             {creando
               ? 'Creando...'
+              : cargandoRaps
+                ? 'Cargando RAPs...'
               : gruposElegidos.length > 1
                 ? `Crear ${gruposElegidos.length} Pruebas y Abrir Editor`
                 : 'Crear Prueba y Abrir Editor'}
@@ -776,6 +808,8 @@ export default function AdminCrearPruebas() {
         </div>
       </div>
 
+      </div>
+      ) : <PanelSaberProPendiente />}
     </div>
   );
 }

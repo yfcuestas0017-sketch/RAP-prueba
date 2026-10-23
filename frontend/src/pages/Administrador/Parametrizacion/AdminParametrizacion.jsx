@@ -14,6 +14,8 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import { fetchJSON } from '../../../services/api';
+import ProgresoResultadosChart from './ProgresoResultadosChart.jsx';
+import DistribucionCoberturaChart from './DistribucionCoberturaChart.jsx';
 import './AdminParametrizacion.css';
 
 const ESTADOS_EVALUACION = ['BORRADOR', 'ACTIVA', 'CERRADA', 'ELIMINADA'];
@@ -338,7 +340,7 @@ export default function AdminParametrizacion() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#112F5C]">
-            {tabActiva === 'momentos' ? 'Parametrización de pruebas' : 'Resultados de Aprendizaje'}
+            {tabActiva === 'momentos' ? 'Parametrización' : 'Resultados de Aprendizaje'}
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
             {tabActiva === 'momentos'
@@ -425,19 +427,17 @@ export default function AdminParametrizacion() {
                 <label htmlFor="param-periodo-momentos" className="block text-[11px] font-semibold text-gray-700 mb-1">
                   Periodo académico
                 </label>
-                <input
+                <select
                   id="param-periodo-momentos"
-                  list="param-periodos-disponibles"
                   value={filtrosMomentos.periodo}
                   onChange={(evento) => actualizarMomentos('periodo', evento.target.value)}
-                  placeholder="Todos"
                   className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
-                />
-                <datalist id="param-periodos-disponibles">
+                >
+                  <option value="">Todos</option>
                   {periodosDisponibles.map((periodo) => (
-                    <option key={periodo} value={periodo} />
+                    <option key={periodo} value={periodo}>{periodo}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div>
@@ -593,14 +593,17 @@ export default function AdminParametrizacion() {
                 <label htmlFor="param-periodo-resultados" className="block text-[10px] font-semibold text-gray-500 mb-1">
                   Periodo académico
                 </label>
-                <input
+                <select
                   id="param-periodo-resultados"
-                  list="param-periodos-disponibles"
                   value={filtrosResultados.periodo}
                   onChange={(evento) => actualizarResultados('periodo', evento.target.value)}
-                  placeholder="Todos"
                   className="w-full px-2.5 py-1.5 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
-                />
+                >
+                  <option value="">Todos</option>
+                  {periodosDisponibles.map((periodo) => (
+                    <option key={periodo} value={periodo}>{periodo}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -719,6 +722,11 @@ export default function AdminParametrizacion() {
                 <p className="bg-blue-50 px-3 py-1 rounded-xl text-blue-900">
                   {coberturaPromedio === null ? 'Cobertura promedio: —' : `Cobertura promedio: ${coberturaPromedio}%`}
                 </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
+                <ProgresoResultadosChart resultados={resultados} />
+                <DistribucionCoberturaChart resultados={resultados} />
               </div>
 
               <div className="param-tabla-resultados bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -847,7 +855,7 @@ export default function AdminParametrizacion() {
       )}
 
       <p className="hidden print:block text-center text-xs text-gray-600">
-        Universidad CESMAG — Parametrización de pruebas — {new Date().toLocaleDateString('es-CO')}
+        Universidad CESMAG — Parametrización — {new Date().toLocaleDateString('es-CO')}
       </p>
     </div>
   );

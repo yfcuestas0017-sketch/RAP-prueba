@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { 
   FaUsers, 
@@ -6,11 +7,9 @@ import {
   FaGraduationCap, 
   FaClock, 
   FaArrowLeft,
-  FaBookOpen,
   FaUserGraduate
 } from 'react-icons/fa';
 
-import { API_BASE_URL } from '../../../config';
 export default function DocenteMisGrupos() {
   const [grupos, setGrupos] = useState([]);
   const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
@@ -283,7 +282,8 @@ export default function DocenteMisGrupos() {
               {grupos.map((g) => (
                 <div 
                   key={g.id_grupo}
-                  className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                  onClick={() => handleVerGrupo(g.id_grupo)}
+                  className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md hover:border-[#112F5C]/30 transition-all flex flex-col justify-between space-y-4 cursor-pointer"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -316,13 +316,9 @@ export default function DocenteMisGrupos() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleVerGrupo(g.id_grupo)}
-                    disabled={loadingDetalle}
-                    className="w-full bg-[#112F5C] hover:bg-blue-900 text-white font-bold text-xs py-2.5 rounded-xl transition shadow flex items-center justify-center gap-2"
-                  >
-                    <FaBookOpen /> Ver Carga y Evaluaciones
-                  </button>
+                  <div className="flex items-center justify-end gap-2 text-[11px] text-gray-500">
+                    <span>Haz clic en el grupo para ver sus estudiantes</span>
+                  </div>
                 </div>
               ))}
             </div>

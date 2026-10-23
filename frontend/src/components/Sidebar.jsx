@@ -28,7 +28,7 @@ const menuItems = [
       { title: 'Resultados RAP', path: '/evaluaciones/resultados' }
     ]
   },
-  { title: 'Reportes', icon: <FaFileAlt />, path: '/DocenteReportes' }
+  { title: 'Reportes', icon: <FaFileAlt />, path: '/docente/reportes' }
 ];
 
 export const Sidebar = ({ currentPath = '/docente', isOpen = true }) => {

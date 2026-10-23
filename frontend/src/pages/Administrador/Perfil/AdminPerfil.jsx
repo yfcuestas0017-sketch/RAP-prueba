@@ -1,18 +1,14 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { 
-  FaUser, 
-  FaLock, 
-  FaSlidersH, 
   FaHistory, 
   FaSyncAlt, 
   FaExclamationCircle, 
   FaCheckCircle,
-  FaDesktop,
   FaInfoCircle
 } from 'react-icons/fa';
 import "./AdminPerfil.css";
 
-import { API_BASE_URL } from '../../../config';
 const PREFERENCIAS_DEFECTO = {
   idioma: 'Español (Colombia)',
   zonaHoraria: 'UTC-05:00 Bogotá, Lima, Quito',
@@ -43,20 +39,20 @@ export default function AdminPerfil() {
   const [error, setError] = useState('');
   const [mensajeExito, setMensajeExito] = useState('');
 
-  // Estados para datos recibidos de la BD
   const [perfil, setPerfil] = useState({
     nombre: '',
     correo: '',
-    telefono: '',
+    documento: '',
     facultad: '',
     programa: '',
-    departamento: '',
     rol: '',
     estado: '',
     usuario: ''
   });
 
   const [passwordForm, setPasswordForm] = useState({
+    usuarioActual: '',
+    usuarioNuevo: '',
     actual: '',
     nueva: '',
     confirmar: ''
@@ -114,14 +110,18 @@ export default function AdminPerfil() {
         setPerfil({
           nombre: `${p.nombre || ''} ${p.apellido || ''}`.trim(),
           correo: p.correo || '—',
-          telefono: p.telefono || '—',
-          facultad: p.facultad || '—',
-          programa: p.programa || '—',
-          departamento: p.departamento || '—',
+          documento: p.id_user_institucional != null ? String(p.id_user_institucional) : '—',
+          // El backend de /api/admin/Perfil hoy no expone facultad ni programa
+          // (el rol administrador no tiene grupo/semestre asignado). Quedan en
+          // vacío y la sección se oculta; si el backend los publica más adelante,
+          // aparecen automáticamente sin tocar el frontend.
+          facultad: (p.facultad || '').trim(),
+          programa: (p.programa || '').trim(),
           rol: p.rol || '—',
           estado: p.estado === true ? 'Activo' : p.estado === false ? 'Inactivo' : '—',
           usuario: p.usuario || '—'
         });
+        setPasswordForm((prev) => ({ ...prev, usuarioActual: p.usuario || '' }));
         setPreferencias(obtenerPreferenciasGuardadas(p.usuario));
       }
       if (resultado.auditoria) setAuditoria(resultado.auditoria);
@@ -138,20 +138,45 @@ export default function AdminPerfil() {
     cargarPerfil();
   }, []);
 
-  const handleActualizarPassword = async (e) => {
+  const handleActualizarCredenciales = async (e) => {
     e.preventDefault();
-    if (!passwordForm.actual || !passwordForm.nueva || !passwordForm.confirmar) {
-      alert('Debe proporcionar la contraseña actual y la nueva contraseña.');
+    const { usuarioActual, usuarioNuevo, actual, nueva, confirmar } = passwordForm;
+    const cambioUsuario = usuarioNuevo.trim() !== '';
+    const cambioPassword = actual !== '' || nueva !== '' || confirmar !== '';
+
+    if (!cambioUsuario && !cambioPassword) {
+      alert('Debe indicar un nuevo usuario o una nueva contraseña para actualizar.');
       return;
     }
-    if (passwordForm.nueva !== passwordForm.confirmar) {
-      alert('Las contraseñas nuevas no coinciden');
+    if (cambioUsuario && !usuarioActual.trim()) {
+      alert('Debe proporcionar el usuario actual.');
       return;
     }
-    if (passwordForm.nueva.length < 8) {
-      alert('La nueva contraseña debe tener al menos 8 caracteres.');
-      return;
+    if (cambioPassword) {
+      if (!actual || !nueva || !confirmar) {
+        alert('Debe proporcionar la contraseña actual y la nueva contraseña.');
+        return;
+      }
+      if (nueva !== confirmar) {
+        alert('Las contraseñas nuevas no coinciden');
+        return;
+      }
+      if (nueva.length < 8) {
+        alert('La nueva contraseña debe tener al menos 8 caracteres.');
+        return;
+      }
     }
+
+    const body = {};
+    if (cambioUsuario) {
+      body.usuarioActual = usuarioActual.trim();
+      body.usuarioNuevo = usuarioNuevo.trim();
+    }
+    if (cambioPassword) {
+      body.passwordActual = actual;
+      body.passwordNueva = nueva;
+    }
+
     try {
       setMensajeExito('');
       setError('');
@@ -159,17 +184,18 @@ export default function AdminPerfil() {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          passwordActual: passwordForm.actual,
-          passwordNueva: passwordForm.nueva
-        })
+        body: JSON.stringify(body)
       });
 
       const res = await respuesta.json();
-      if (!respuesta.ok) throw new Error(res.mensaje || 'Error al actualizar contraseña');
+      if (!respuesta.ok) throw new Error(res.mensaje || 'Error al actualizar credenciales');
 
-      setMensajeExito(res.mensaje || 'Contraseña actualizada con éxito.');
-      setPasswordForm({ actual: '', nueva: '', confirmar: '' });
+      setMensajeExito(res.mensaje || 'Credenciales actualizadas con éxito.');
+      const usuarioFinal = cambioUsuario ? usuarioNuevo.trim() : perfil.usuario;
+      setPasswordForm({ usuarioActual: usuarioFinal, usuarioNuevo: '', actual: '', nueva: '', confirmar: '' });
+      if (cambioUsuario) {
+        setPerfil((prev) => ({ ...prev, usuario: usuarioFinal }));
+      }
       setTimeout(() => setMensajeExito(''), 4000);
     } catch (err) {
       alert(err.message);
@@ -275,7 +301,7 @@ export default function AdminPerfil() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-[#112F5C]">{perfil.nombre || 'Administrador Sin Nombre'}</h2>
-                <p className="text-xs text-gray-500 mt-0.5">{perfil.departamento || 'Universidad CESMAG'}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{perfil.correo}</p>
                 <div className="flex items-center gap-2 mt-2">
                   <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-3 py-0.5 rounded-full">
                     {perfil.rol || 'Rol: Administrador'}
@@ -288,11 +314,11 @@ export default function AdminPerfil() {
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="bg-[#112F5C] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm">
+              <button
+                type="button"
+                className="bg-[#112F5C] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-sm"
+              >
                 Cambiar Foto
-              </button>
-              <button className="bg-red-50 text-[#B3282D] border border-red-100 hover:bg-red-100 text-xs font-semibold px-4 py-2 rounded-xl transition">
-                Eliminar Foto
               </button>
             </div>
           </div>
@@ -317,6 +343,15 @@ export default function AdminPerfil() {
                     className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
                   />
                 </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">Documento / Código Institucional:</label>
+                  <input
+                    type="text"
+                    value={perfil.documento}
+                    readOnly
+                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -329,60 +364,65 @@ export default function AdminPerfil() {
                     className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
                   />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">Teléfono de Contacto:</label>
-                  <input
-                    type="text"
-                    value={perfil.telefono}
-                    readOnly
-                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
-                  />
-                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">Facultad / Unidad:</label>
-                  <input
-                    type="text"
-                    value={perfil.facultad}
-                    readOnly
-                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
-                  />
+              {/* Facultad y Programa solo existen si el backend los envía; el
+                  rol administrador no tiene grupo/semestre asignado y hoy no
+                  los publica, por lo que esta fila queda oculta. */}
+              {(perfil.facultad || perfil.programa) && (
+                <div
+                  className={`grid grid-cols-1 gap-4 ${
+                    perfil.facultad && perfil.programa ? 'sm:grid-cols-2' : ''
+                  }`}
+                >
+                  {perfil.facultad && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-700 mb-1">Facultad:</label>
+                      <input
+                        type="text"
+                        value={perfil.facultad}
+                        readOnly
+                        className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
+                      />
+                    </div>
+                  )}
+                  {perfil.programa && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-700 mb-1">Programa Académico:</label>
+                      <input
+                        type="text"
+                        value={perfil.programa}
+                        readOnly
+                        className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
+                      />
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-700 mb-1">Programa Académico:</label>
-                  <input
-                    type="text"
-                    value={perfil.programa}
-                    readOnly
-                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Departamento / Dependencia:</label>
-                <input
-                  type="text"
-                  value={perfil.departamento}
-                  readOnly
-                  className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
-                />
-              </div>
+              )}
             </div>
 
             {/* Formulario Seguridad y Credenciales */}
-            <form onSubmit={handleActualizarPassword} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+            <form onSubmit={handleActualizarCredenciales} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
               <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">Seguridad y Credenciales</h3>
 
               <div>
-                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Usuario de acceso:</label>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Usuario Actual:</label>
                 <input
                   type="text"
-                  value={perfil.usuario}
-                  readOnly
-                  className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none"
+                  value={passwordForm.usuarioActual}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, usuarioActual: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#112F5C]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-700 mb-1">Nuevo Usuario:</label>
+                <input
+                  type="text"
+                  placeholder="Dejar vacío para no cambiarlo"
+                  value={passwordForm.usuarioNuevo}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, usuarioNuevo: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-[#112F5C]"
                 />
               </div>
 
@@ -423,7 +463,7 @@ export default function AdminPerfil() {
                 type="submit"
                 className="w-full py-2.5 bg-[#B3282D] hover:bg-red-800 text-white font-bold rounded-xl text-xs transition-colors shadow-md mt-2"
               >
-                Actualizar Contraseña
+                Actualizar Credenciales
               </button>
             </form>
           </div>
@@ -540,9 +580,6 @@ export default function AdminPerfil() {
               <h3 className="text-sm font-bold text-[#112F5C]">Registro de Inicios de Sesión y Eventos de Seguridad</h3>
               <p className="text-xs text-gray-400 mt-0.5">Monitoree las conexiones con sus credenciales para prevenir accesos no autorizados.</p>
             </div>
-            <button className="bg-[#B3282D] hover:bg-red-800 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow shrink-0">
-              Cerrar Sesiones en Otros Dispositivos
-            </button>
           </div>
 
           <div className="overflow-x-auto">

@@ -1,8 +1,6 @@
 const pool = require("../../config/database");
 const obtenerPerfil = async (req, res) => {
     try {
-
-        // Obtener el ID del usuario autenticado
         const id_user = req.user?.id_user || req.user?.id;
 
         if (!id_user) {
@@ -20,12 +18,48 @@ const obtenerPerfil = async (req, res) => {
                 u.correo,
                 u.estado,
                 r.id_rol,
-                r.nombre AS rol
+                r.nombre AS rol,
+
+                COALESCE(
+                    jsonb_agg(
+                        DISTINCT jsonb_build_object(
+                            'id_programa', p.id_programa,
+                            'programa', p.nombre,
+                            'id_facultad', f.id_facultad,
+                            'facultad', f.nombre
+                        )
+                    ) FILTER (
+                        WHERE p.id_programa IS NOT NULL
+                    ),
+                    '[]'::jsonb
+                ) AS programas
+
             FROM usuarios u
             INNER JOIN rol r
-                ON u.id_rol = r.id_rol
+                ON r.id_rol = u.id_rol
+            LEFT JOIN usuario_grupo ug
+                ON ug.id_user = u.id_user
+                AND ug.estado = TRUE
+            LEFT JOIN grupo g
+                ON g.id_grupo = ug.id_grupo
+            LEFT JOIN semestre s
+                ON s.id_semestre = g.id_semestre
+            LEFT JOIN programa p
+                ON p.id_programa = s.id_programa
+            LEFT JOIN facultad f
+                ON f.id_facultad = p.id_facultad
             WHERE u.id_user = $1
               AND u.id_rol = 5
+
+            GROUP BY
+                u.id_user,
+                u.id_user_institucional,
+                u.nombre,
+                u.apellido,
+                u.correo,
+                u.estado,
+                r.id_rol,
+                r.nombre
         `;
 
         const resultado = await pool.query(query, [id_user]);
@@ -42,7 +76,6 @@ const obtenerPerfil = async (req, res) => {
         });
 
     } catch (error) {
-
         console.error(
             "Error al obtener perfil del docente:",
             error
@@ -54,7 +87,4 @@ const obtenerPerfil = async (req, res) => {
     }
 };
 
-
-module.exports = {
-    obtenerPerfil
-};
+module.exports = { obtenerPerfil };

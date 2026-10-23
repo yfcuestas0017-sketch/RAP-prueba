@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { menuEstudiante } from '../config/menusEstudiante';
+import { menuEstudiantePorSemestre } from '../config/menusEstudiante';
+import { obtenerContexto } from '../services/estudianteEvaluaciones';
 
 // Importación del escudo institucional
 import logoUnicesmag from '../assets/Escudos_cesmag.png';
@@ -10,15 +11,31 @@ export const SidebarEstudiante = ({ isOpen = true }) => {
   const currentPath = location.pathname;
 
   const [openIndex, setOpenIndex] = useState(null);
+  const [semestre, setSemestre] = useState(4);
+
+  // El menú de "Evaluaciones y Proyectos" cambia según el semestre del estudiante.
+  useEffect(() => {
+    let activo = true;
+    obtenerContexto()
+      .then((ctx) => {
+        if (activo) setSemestre(ctx?.estudiante?.semestre ?? 4);
+      })
+      .catch(() => {});
+    return () => {
+      activo = false;
+    };
+  }, []);
+
+  const menu = useMemo(() => menuEstudiantePorSemestre(semestre), [semestre]);
 
   useEffect(() => {
-    const activeParentIndex = menuEstudiante.findIndex(
+    const activeParentIndex = menu.findIndex(
       (item) => item.submenu && item.submenu.some((sub) => sub.path === currentPath)
     );
     if (activeParentIndex !== -1) {
       setOpenIndex(activeParentIndex);
     }
-  }, [currentPath]);
+  }, [currentPath, menu]);
 
   const toggleSubmenu = (index) => {
     setOpenIndex((prev) => (prev === index ? null : index));
@@ -45,7 +62,7 @@ export const SidebarEstudiante = ({ isOpen = true }) => {
 
       {/* 2. NAVEGACIÓN PRINCIPAL */}
       <nav className="flex-1 overflow-y-auto p-4 space-y-2.5">
-        {menuEstudiante.map((item, index) => {
+        {menu.map((item, index) => {
           const hasSubmenu = Boolean(item.submenu);
           const isOpen = openIndex === index;
           const isParentActive = hasSubmenu

@@ -1,5 +1,12 @@
 import React from 'react';
-import { FaHome, FaUsers, FaClipboardList, FaFileAlt, FaUser, FaBook } from 'react-icons/fa';
+import {
+  FaHome,
+  FaClipboardList,
+  FaFileAlt,
+  FaUser,
+  FaBook,
+  FaGraduationCap
+} from 'react-icons/fa';
 
 export const menuDocente = [
   { 
@@ -12,10 +19,14 @@ export const menuDocente = [
     icon: <FaUser />, 
     path: '/docente/perfil' 
   },
-  { 
-    title: 'Mis grupos', 
-    icon: <FaUsers />, 
-    path: '/docente/grupos' 
+  {
+    title: 'Gestión Académica',
+    icon: <FaGraduationCap />,
+    submenu: [
+      { title: 'Mis grupos', path: '/docente/grupos' },
+      { title: 'Microcurrículo', path: '/docente/microcurriculos' },
+      { title: 'Fichas de Desarrollo Temático', path: '/docente/fichas-desarrollo' }
+    ]
   },
   {
     title: 'Evaluaciones',
@@ -23,7 +34,7 @@ export const menuDocente = [
     submenu: [
       { title: 'Crear Pruebas', path: '/docente/evaluaciones/crear' },
       { title: 'Ver Proyectos Interestructurante', path: '/docente/evaluaciones/interestructurante' },
-      { title: 'Ver Tesis / Coterminalidad', path: '/docente/evaluaciones/tesis' }
+      { title: 'Ver Proyecto de Grado', path: '/docente/evaluaciones/tesis' }
     ]
   },
   {
@@ -31,8 +42,7 @@ export const menuDocente = [
     icon: <FaBook />,
     submenu: [
       { title: 'Módulos y Competencias', path: '/docente/saber-pro/modulos' },
-      { title: 'Simulacros', path: '/docente/saber-pro/simulacros' },
-      { title: 'Resultados Saber Pro', path: '/docente/saber-pro/resultados' }
+      { title: 'Simulacros', path: '/docente/saber-pro/simulacros' }
     ]
   },
   { 

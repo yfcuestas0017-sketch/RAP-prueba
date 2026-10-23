@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -13,8 +14,8 @@ import {
   FaLightbulb,
   FaGraduationCap
 } from "react-icons/fa";
+import { esProyectoGrado } from "../../../utils/proyectos.js";
 
-import { API_BASE_URL } from '../../../config';
 export default function DocenteInicio() {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -114,9 +115,6 @@ export default function DocenteInicio() {
       `${proyecto.codigo_grupo || ""}`.toLowerCase().includes(texto)
     );
   });
-
-  const esProyectoGrado = (p) =>
-    p.especializacion === true || /grado|tesis/i.test(p.tipo_proyecto || "");
 
   const proyectosGrado = proyectosFiltrados.filter(esProyectoGrado);
   const proyectosIntegradores = proyectosFiltrados.filter(

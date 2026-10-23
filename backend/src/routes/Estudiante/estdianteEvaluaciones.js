@@ -1,5 +1,5 @@
-const express = require("express");
 
+const express = require("express");
 const router = express.Router();
 
 const {
@@ -7,9 +7,7 @@ const {
     obtenerEvaluacion,
 } = require("../../controllers/estudiante/estudianteEvaluacionController");
 
-const 
-    verificarEstudiante = require("../../middleware/estudiante");
-
+const verificarEstudiante = require("../../middleware/estudiante");
 
 router.get(
     "/",
@@ -17,12 +15,10 @@ router.get(
     listarEvaluaciones
 );
 
-
 router.get(
-    "/:idEvaluacion",
+    "/:idEvaluacion(\\d+)",
     verificarEstudiante,
     obtenerEvaluacion
 );
-
 
 module.exports = router;

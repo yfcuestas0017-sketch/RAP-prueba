@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import {
   FaSyncAlt,
@@ -7,7 +8,6 @@ import {
 } from 'react-icons/fa';
 import "./EstudiantePerfil.css";
 
-import { API_BASE_URL } from '../../../config';
 export default function EstudiantePerfil() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

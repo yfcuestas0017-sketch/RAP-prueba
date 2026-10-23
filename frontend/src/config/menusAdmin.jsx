@@ -6,8 +6,7 @@ import {
   FaSlidersH, 
   FaFileExport, 
   FaHistory,
-  FaUser,
-  FaBook
+  FaUser
 } from 'react-icons/fa';
 
 export const menuAdmin = [
@@ -26,9 +25,23 @@ export const menuAdmin = [
     icon: <FaGraduationCap />,
     submenu: [
       { title: 'Usuarios y Roles', path: '/admin/usuarios' },
-      { title: 'Espacios Académicos', path: '/admin/espacios' },
+      { title: 'Asignación de Usuarios', path: '/admin/espacios' },
+      { title: 'Microcurrículo', path: '/admin/microcurriculos' },
+      { title: 'Fichas de Desarrollo Temático', path: '/admin/fichas-desarrollo' },
       { title: 'Carga Docente', path: '/admin/carga-docente' },
       { title: 'Carga Estudiante', path: '/admin/carga-estudiante' }
+    ]
+  },
+  {
+    title: 'Catálogos Académicos',
+    icon: <FaGraduationCap />,
+    submenu: [
+      { title: 'Componentes', path: '/admin/catalogos/componentes' },
+      { title: 'Espacios Académicos', path: '/admin/catalogos/espacios-academicos' },
+      { title: 'Semestres', path: '/admin/catalogos/semestres' },
+      { title: 'Grupos', path: '/admin/catalogos/grupos' },
+      { title: 'Jornadas', path: '/admin/catalogos/jornadas' },
+      { title: 'Periodos Académicos', path: '/admin/catalogos/periodos' }
     ]
   },
   {
@@ -36,31 +49,22 @@ export const menuAdmin = [
     icon: <FaClipboardList />,
     submenu: [
       { title: 'Crear Pruebas', path: '/admin/evaluaciones/crear' },
-      { title: 'Ver Proyectos Interestructurante', path: '/admin/evaluaciones/interestructurante' },
-      { title: 'Ver Tesis / Coterminalidad', path: '/admin/evaluaciones/tesis' }
-    ]
-  },
-  {
-    title: 'Pruebas Saber Pro',
-    icon: <FaBook />,
-    submenu: [
-      { title: 'Módulos y Competencias', path: '/admin/saber-pro/modulos' },
-      { title: 'Simulacros', path: '/admin/saber-pro/simulacros' },
-      { title: 'Resultados Saber Pro', path: '/admin/saber-pro/resultados' }
+      { title: 'Proyectos Interestructurantes', path: '/admin/evaluaciones/interestructurante' },
+      { title: 'Tesis y Modalidad de Grado', path: '/admin/evaluaciones/modalidad-grado' }
     ]
   },
   { 
-    title: 'Parametrización de Pruebas', 
+    title: 'Parametrización', 
     icon: <FaSlidersH />, 
     path: '/admin/parametrizacion' 
   },
   { 
-    title: 'Reportes y Exportación', 
+    title: 'Reportes', 
     icon: <FaFileExport />, 
     path: '/admin/reportes' 
   },
   { 
-    title: 'Trazabilidad y Auditoría', 
+    title: 'Informes auditoría', 
     icon: <FaHistory />, 
     path: '/admin/auditoria' 
   }

@@ -8,6 +8,8 @@ function query(filters = {}) {
 
 export const obtenerReportesAdmin = (filters) => fetchJSON(`/api/admin/reportes${query(filters)}`);
 export const obtenerFiltrosReportesAdmin = () => fetchJSON('/api/admin/reportes/filtros');
+export const obtenerEspaciosPorComponente = (idComponente) =>
+  fetchJSON(`/api/adminCompo/Componentes/${encodeURIComponent(idComponente)}/EspaciosAcademicos`);
 export const obtenerReportesDocente = (filters) => fetchJSON(`/api/docente/reportes${query(filters)}`);
 export const obtenerFiltrosReportesDocente = () => fetchJSON('/api/docente/reportes/filtros');
 export const obtenerReportesEstudiante = (filters) => fetchJSON(`/api/estudiante/reportes${query(filters)}`);

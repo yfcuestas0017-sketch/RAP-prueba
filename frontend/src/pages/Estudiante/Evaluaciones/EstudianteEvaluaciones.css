@@ -1,0 +1,22 @@
+@keyframes rapFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: rapFadeIn .35s ease both; }
+
+@keyframes rapPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(179, 40, 45, .45); }
+  50% { box-shadow: 0 0 0 8px rgba(179, 40, 45, 0); }
+}
+
+.rap-timer-vivo { animation: rapPulse 1.6s ease-in-out infinite; }
+
+.rap-opcion { transition: all .18s ease; }
+.rap-opcion:hover { transform: translateX(3px); }
+
+.rap-tab { transition: all .18s ease; }
+.rap-tab:hover { transform: translateY(-2px); }
+
+.rap-reactivo { transition: all .15s ease; }
+.rap-reactivo:hover { transform: scale(1.08); }
