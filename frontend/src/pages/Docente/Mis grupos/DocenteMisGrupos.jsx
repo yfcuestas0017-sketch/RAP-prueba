@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { 
   FaUsers, 
@@ -9,6 +8,7 @@ import {
   FaArrowLeft,
   FaUserGraduate
 } from 'react-icons/fa';
+import { API_BASE_URL } from '../../../config';
 
 export default function DocenteMisGrupos() {
   const [grupos, setGrupos] = useState([]);
@@ -38,7 +38,11 @@ export default function DocenteMisGrupos() {
         throw new Error(datos.mensaje || 'Error al obtener los grupos asignados');
       }
 
-      setGrupos(datos.grupos || []);
+      // Una asignación repetida en la respuesta no debe producir tarjetas duplicadas.
+      const gruposUnicos = Array.isArray(datos.grupos)
+        ? [...new Map(datos.grupos.map((grupo) => [grupo.id_grupo, grupo])).values()]
+        : [];
+      setGrupos(gruposUnicos);
     } catch (err) {
       console.error('Error obteniendo grupos:', err);
       setError(err.message);

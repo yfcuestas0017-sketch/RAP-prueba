@@ -1,6 +1,5 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   FaSyncAlt, 
   FaExclamationCircle, 
@@ -11,9 +10,11 @@ import {
   FaFilter,
   FaUsers,
   FaCheck,
-  FaListUl
+  FaListUl,
+  FaRobot
 } from 'react-icons/fa';
-import ApartadosPruebas, { PanelSaberProPendiente } from '../../shared/ApartadosPruebas.jsx';
+import AsistenteIAChat from '../../../components/ia/AsistenteIAChat.jsx';
+import { API_BASE_URL } from '../../../config';
 
 const ESTADOS = ['BORRADOR', 'ACTIVA', 'CERRADA', 'ELIMINADA'];
 
@@ -37,7 +38,8 @@ const agruparGruposPorDocente = (filas) => {
 
 export default function AdminCrearPruebas() {
   const navigate = useNavigate();
-  const [tipoPrueba, setTipoPrueba] = useState('rap');
+  const [searchParams] = useSearchParams();
+  const tipoPrueba = searchParams.get('tipo') === 'saber-pro' ? 'saber-pro' : 'rap';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -110,8 +112,13 @@ export default function AdminCrearPruebas() {
   };
 
   useEffect(() => {
+    if (tipoPrueba === 'saber-pro') {
+      setLoading(false);
+      setError('');
+      return;
+    }
     cargarDatos();
-  }, []);
+  }, [tipoPrueba]);
 
   // Un docente puede venir de /evaluaciones/docentes y sus grupos de /adminUsuarios/Docentes.
   // Se fusionan para que el select muestre siempre todos los docentes activos.
@@ -396,11 +403,9 @@ export default function AdminCrearPruebas() {
       
       {/* Título */}
       <div>
-        <h1 className="text-2xl font-bold text-[#112F5C]">Gestión y Creación de Pruebas RAP por Semestre</h1>
-        <p className="text-xs text-gray-500 mt-0.5">Cree evaluaciones a partir del docente, el momento de evaluación y los grupos que tiene asignados. El título y las preguntas los redacta el docente.</p>
+        <h1 className="text-2xl font-bold text-[#112F5C]">{tipoPrueba === 'rap' ? 'Gestión y Creación de Pruebas RAP por Semestre' : 'Pruebas Saber Pro'}</h1>
+        {tipoPrueba === 'rap' && <p className="text-xs text-gray-500 mt-0.5">Cree evaluaciones a partir del docente, el momento de evaluación y los grupos que tiene asignados. El título y las preguntas los redacta el docente.</p>}
       </div>
-
-      <ApartadosPruebas activo={tipoPrueba} onCambiar={setTipoPrueba} />
 
       {tipoPrueba === 'rap' ? (
       <div className="space-y-6">
@@ -809,7 +814,21 @@ export default function AdminCrearPruebas() {
       </div>
 
       </div>
-      ) : <PanelSaberProPendiente />}
+      ) : (
+        <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
+          <div className="flex items-start gap-3">
+            <FaRobot className="text-2xl text-[#B3282D] mt-0.5 shrink-0" />
+            <div>
+              <h2 className="text-sm font-bold text-[#112F5C]">Asistente IA para cuestionarios Saber Pro</h2>
+              <p className="text-xs text-gray-600 mt-1 leading-relaxed max-w-3xl">
+                Genera borradores de cuestionarios a partir de los microcurrículos y fichas de desarrollo temático.
+                Revisa y corrige las preguntas antes de utilizarlas.
+              </p>
+            </div>
+          </div>
+          <AsistenteIAChat />
+        </section>
+      )}
     </div>
   );
 }

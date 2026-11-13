@@ -1,6 +1,7 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { fetchJSON } from "../../../services/api.js";
+import AdminEspaciosAcademicos from "../EspaciosAcademicos/AdminEspaciosAcademicos.jsx";
 import {
   FaUser,
   FaSlidersH,
@@ -11,6 +12,9 @@ import {
   FaSearch,
   FaPlus
 } from "react-icons/fa";
+import { API_BASE_URL } from '../../../config';
+
+const MOSTRAR_ASIGNACION_USUARIOS_EN_INICIO = true;
 
 export default function AdminInicio() {
   const [datos, setDatos] = useState(null);
@@ -29,29 +33,43 @@ export default function AdminInicio() {
       setLoading(true);
       setError("");
 
-      const respuesta = await fetch(`${API_BASE_URL}/api/users/usuarios`, {
-        method: "GET",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      });
+      const [resultadoUsuarios, resultadoRaps, resultadoEvaluaciones] = await Promise.allSettled([
+        fetchJSON("/api/users/usuarios"),
+        fetchJSON("/api/admin/seguimiento/resultados"),
+        fetchJSON("/api/admin/evaluaciones")
+      ]);
 
-      const resultado = await respuesta.json();
-
-      if (respuesta.ok && resultado.success) {
-        const usuarios = Array.isArray(resultado.usuarios) ? resultado.usuarios : [];
-        setDatos({
-          estadisticas: {
-            usuariosActivos: usuarios.filter((u) => u.estado).length,
-            rapsParametrizados: 0,
-            pruebasActivas: 0
-          },
-          cargaDocente: []
-        });
-      } else {
-        throw new Error(resultado.mensaje || "No se pudo cargar la información de administración");
+      if (resultadoUsuarios.status !== "fulfilled" || !resultadoUsuarios.value?.success) {
+        throw new Error(
+          resultadoUsuarios.status === "rejected"
+            ? resultadoUsuarios.reason.message
+            : resultadoUsuarios.value?.mensaje || "No se pudo cargar la información de administración"
+        );
       }
+
+      const usuarios = Array.isArray(resultadoUsuarios.value.usuarios)
+        ? resultadoUsuarios.value.usuarios
+        : [];
+      const filasRaps = resultadoRaps.status === "fulfilled" && Array.isArray(resultadoRaps.value?.data)
+        ? resultadoRaps.value.data
+        : [];
+      const evaluaciones = resultadoEvaluaciones.status === "fulfilled" && Array.isArray(resultadoEvaluaciones.value?.data)
+        ? resultadoEvaluaciones.value.data
+        : [];
+      const rapsParametrizados = new Set(
+        filasRaps.map((fila) => fila.id_rap).filter((idRap) => idRap !== null && idRap !== undefined)
+      ).size;
+
+      setDatos({
+        estadisticas: {
+          usuariosActivos: usuarios.filter((usuario) => usuario.estado).length,
+          rapsParametrizados,
+          pruebasActivas: evaluaciones.filter((evaluacion) =>
+            String(evaluacion.estado || "").toUpperCase() === "ACTIVA"
+          ).length
+        },
+        cargaDocente: []
+      });
     } catch (err) {
       console.error("Error cargando dashboard administrador:", err);
       setError(err.message);
@@ -224,7 +242,7 @@ export default function AdminInicio() {
                 <p className="text-2xl font-bold text-[#B3282D] mt-0.5">
                   {estadisticas.rapsParametrizados} Definidos
                 </p>
-                <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Nodos RAP configurados</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">RAP asociados a evaluaciones</p>
                 <Link to="/admin/parametrizacion?tab=resultados" className="text-xs font-bold text-[#112F5C] mt-2 inline-block hover:underline">
                   Ver RAPs &rarr;
                 </Link>
@@ -241,7 +259,7 @@ export default function AdminInicio() {
                 <p className="text-2xl font-bold text-[#112F5C] mt-0.5">
                   {estadisticas.pruebasActivas} Evaluaciones
                 </p>
-                <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Evaluaciones por revisar</p>
+                <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">Evaluaciones en estado activa</p>
                 <Link to="/admin/evaluaciones" className="text-xs font-bold text-[#112F5C] mt-2 inline-block hover:underline">
                   Ver evaluaciones &rarr;
                 </Link>
@@ -280,7 +298,10 @@ export default function AdminInicio() {
             </div>
           </div>
 
-          {/* 4. TABLA DE CARGA DOCENTE */}
+          {/* Vista temporal para revisar Asignación de Usuarios dentro del panel admin. */}
+          {MOSTRAR_ASIGNACION_USUARIOS_EN_INICIO ? (
+            <AdminEspaciosAcademicos />
+          ) : (
           <div className="space-y-3">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div>
@@ -369,6 +390,7 @@ export default function AdminInicio() {
               </div>
             </div>
           </div>
+          )}
 
         </div>
 

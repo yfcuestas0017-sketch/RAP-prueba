@@ -1,6 +1,5 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FaSyncAlt,
   FaExclamationCircle,
@@ -12,6 +11,7 @@ import {
   FaPlus,
   FaTrash,
   FaLock,
+  FaCheck,
   FaTimes,
   FaSave,
   FaCheckCircle,
@@ -23,11 +23,13 @@ import {
   obtenerPermisoCrudEvaluaciones,
   crearEvaluacion,
   actualizarEvaluacion,
-  eliminarEvaluacion
+  eliminarEvaluacion,
+  obtenerResultadosEvaluacionDocente,
+  listarEvaluacionesDocente
 } from '../../../services/docenteEvaluacionesService';
 import { impedirEnvioPorEnter } from '../../../utils/impedirEnvioPorEnter.js';
-import ApartadosPruebas, { SubApartadosPruebas } from '../../shared/ApartadosPruebas.jsx';
 import DocenteSaberPro from './SaberPro/DocenteSaberPro.jsx';
+import { API_BASE_URL } from '../../../config';
 
 const FORMULARIO_VACIO = {
   nombre: '',
@@ -38,6 +40,7 @@ const FORMULARIO_VACIO = {
 
 export default function DocenteCrearPruebas() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [tipoPrueba, setTipoPrueba] = useState('rap');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,9 +49,13 @@ export default function DocenteCrearPruebas() {
   const [cargandoHistorial, setCargandoHistorial] = useState(true);
   const [errorHistorial, setErrorHistorial] = useState('');
   const [busquedaHistorial, setBusquedaHistorial] = useState('');
+  const [filtrosHistorial, setFiltrosHistorial] = useState({ semestre: '', grupo: '', promedio: '', evaluacion: '' });
 
   // Sub-apartado activo dentro de las pruebas RAP (evaluaciones / historial).
   const [subApartadoRap, setSubApartadoRap] = useState('evaluaciones');
+  
+  // Filtro para mostrar borradores o activas
+  const [filtroEstado, setFiltroEstado] = useState('todas');
 
   // Permiso del administrador para el modo CRUD (crear / editar / eliminar).
   // null = consultando; false = denegado (comportamiento por defecto).
@@ -61,18 +68,46 @@ export default function DocenteCrearPruebas() {
   const [errorFormulario, setErrorFormulario] = useState('');
   const [guardando, setGuardando] = useState(false);
 
+  useEffect(() => {
+    const tipo = searchParams.get('tipo');
+    const apartado = searchParams.get('apartado');
+    setTipoPrueba(tipo === 'saber-pro' ? 'saber-pro' : 'rap');
+    setSubApartadoRap(apartado === 'historial' ? 'historial' : 'evaluaciones');
+  }, [searchParams]);
+
   const cargarEvaluaciones = async () => {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch(`${API_BASE_URL}/api/docente/evaluaciones`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.mensaje || 'Error al conectar con la base de datos');
-      setEvaluaciones(data.data || []);
+      const data = await listarEvaluacionesDocente();
+      let evaluacionesData = data.data || [];
+      
+      // Verificar y cerrar evaluaciones vencidas automáticamente
+      const ahora = new Date();
+      const evaluacionesActualizadas = await Promise.all(
+        evaluacionesData.map(async (ev) => {
+          if (ev.estado === 'ACTIVA' && ev.fecha_fin) {
+            const fechaFin = new Date(ev.fecha_fin);
+            if (ahora > fechaFin) {
+              try {
+                await fetch(`${API_BASE_URL}/api/docente/evaluaciones/${ev.id_evaluacion}/estado`, {
+                  method: 'PUT',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ estado: 'CERRADA' })
+                });
+                return { ...ev, estado: 'CERRADA' };
+              } catch (err) {
+                console.error('Error cerrando evaluación vencida:', err);
+                return ev;
+              }
+            }
+          }
+          return ev;
+        })
+      );
+      
+      setEvaluaciones(evaluacionesActualizadas);
     } catch (err) {
       console.error('Error cargando evaluaciones del docente:', err);
       setError(err.message);
@@ -139,6 +174,12 @@ export default function DocenteCrearPruebas() {
     }
   };
 
+  const evaluacionesFiltradas = filtroEstado === 'todas' 
+    ? evaluaciones 
+    : filtroEstado === 'borradores'
+      ? evaluaciones.filter(ev => ev.estado !== 'ACTIVA' && ev.estado !== 'CERRADA')
+      : evaluaciones.filter(ev => ev.estado === 'ACTIVA');
+
   const colorPromedio = (fila) => {
     if (Number(fila.estudiantes_evaluados || 0) === 0) {
       return { clase: 'bg-gray-100 text-gray-500', texto: 'Sin respuestas' };
@@ -151,9 +192,27 @@ export default function DocenteCrearPruebas() {
 
   const historialFiltrado = historial.filter((fila) => {
     const texto = busquedaHistorial.trim().toLowerCase();
-    if (!texto) return true;
-    return `${fila.evaluacion || ''} ${fila.grupo || ''} ${fila.jornada || ''}`.toLowerCase().includes(texto);
+    const coincideBusqueda = !texto || `${fila.evaluacion || ''} ${fila.grupo || ''} ${fila.jornada || ''}`.toLowerCase().includes(texto);
+    const coincideSemestre = !filtrosHistorial.semestre || String(fila.semestre) === filtrosHistorial.semestre;
+    const coincideGrupo = !filtrosHistorial.grupo || String(fila.id_grupo) === filtrosHistorial.grupo;
+    const promedio = Number(fila.porcentaje_promedio);
+    const sinPromedio = Number(fila.estudiantes_evaluados || 0) === 0 || fila.porcentaje_promedio === null;
+    const coincidePromedio = !filtrosHistorial.promedio
+      || (filtrosHistorial.promedio === 'sin-respuestas' && sinPromedio)
+      || (filtrosHistorial.promedio === 'menor-60' && !sinPromedio && promedio < 60)
+      || (filtrosHistorial.promedio === '60-79' && promedio >= 60 && promedio < 80)
+      || (filtrosHistorial.promedio === '80-mas' && promedio >= 80);
+    const coincideEvaluacion = !filtrosHistorial.evaluacion || String(fila.id_evaluacion) === filtrosHistorial.evaluacion;
+    return coincideBusqueda && coincideSemestre && coincideGrupo && coincidePromedio && coincideEvaluacion;
   });
+
+  const semestresHistorial = [...new Set(historial.map((fila) => String(fila.semestre ?? '')).filter(Boolean))]
+    .sort((a, b) => Number(a) - Number(b));
+  const gruposHistorial = [...new Map(historial.map((fila) => [String(fila.id_grupo), fila])).values()];
+
+  const abrirDetalleHistorial = (fila) => {
+    navigate(`/docente/evaluaciones/historial/${fila.id_evaluacion}`);
+  };
 
   const abrirCreacion = () => {
     setEvaluacionEditando(null);
@@ -245,7 +304,9 @@ export default function DocenteCrearPruebas() {
     }
   };
 
-  if (loading) {
+  const mostrarListaEvaluaciones = tipoPrueba === 'rap' && subApartadoRap === 'evaluaciones';
+
+  if (loading && mostrarListaEvaluaciones) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
@@ -256,7 +317,7 @@ export default function DocenteCrearPruebas() {
     );
   }
 
-  if (error) {
+  if (error && mostrarListaEvaluaciones) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-6">
         <div className="bg-white shadow-md rounded-2xl p-8 max-w-md w-full text-center border border-gray-100">
@@ -278,72 +339,53 @@ export default function DocenteCrearPruebas() {
         <p className="text-xs text-gray-500 mt-0.5">Solo se muestran las evaluaciones creadas por el administrador y asignadas a sus grupos.</p>
       </div>
 
-      <ApartadosPruebas activo={tipoPrueba} onCambiar={setTipoPrueba} />
-
       {tipoPrueba === 'rap' ? (
       <div className="space-y-6">
 
-      <SubApartadosPruebas
-        activo={subApartadoRap}
-        onCambiar={setSubApartadoRap}
-        etiqueta="Apartados de las pruebas RAP"
-        apartados={[
-          { id: 'evaluaciones', etiqueta: 'Evaluaciones', icono: <FaClipboardList /> },
-          { id: 'historial', etiqueta: 'Historial de evaluaciones', icono: <FaHistory /> }
-        ]}
-      />
-
       {subApartadoRap === 'evaluaciones' && (
-      <>
-      {permisoCrud === null ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center gap-3">
-          <FaSyncAlt className="text-gray-400 animate-spin" />
-          <p className="text-xs text-gray-600">Verificando el permiso del modo CRUD...</p>
-        </div>
-      ) : permisoCrud ? (
-        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-start gap-3">
-          <FaCheckCircle className="text-emerald-600 text-base mt-0.5 shrink-0" />
-          <p className="text-xs text-emerald-900 leading-relaxed">
-            El <strong>Administrador</strong> habilitó el modo CRUD para su perfil: puede crear, editar y eliminar
-            evaluaciones de sus grupos asignados, además de redactar sus reactivos.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
-          <FaLock className="text-blue-600 text-base mt-0.5 shrink-0" />
-          <p className="text-xs text-blue-900 leading-relaxed">
-            <strong>Modo CRUD deshabilitado.</strong> El Administrador aún no le ha otorgado acceso para crear,
-            editar o eliminar evaluaciones. Mientras tanto solo puede redactar los reactivos de las evaluaciones
-            que le fueron asignadas (Paso 2).
-          </p>
-        </div>
-      )}
-
-      {errorAccion && (
-        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
-          <FaExclamationTriangle className="text-[#B3282D] text-base mt-0.5 shrink-0" />
-          <p className="text-xs text-red-700 leading-relaxed">{errorAccion}</p>
-        </div>
-      )}
-
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-bold text-[#112F5C]">Evaluaciones a su cargo (2026-2)</h2>
-          {permisoCrud && (
-            <button
-              type="button"
-              onClick={abrirCreacion}
-              className="inline-flex items-center gap-2 bg-[#112F5C] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow transition"
-            >
-              <FaPlus /> Nueva evaluación
-            </button>
+        <>
+          {errorAccion && (
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-start gap-3">
+              <FaExclamationTriangle className="text-[#B3282D] text-base mt-0.5 shrink-0" />
+              <p className="text-xs text-red-700 leading-relaxed">{errorAccion}</p>
+            </div>
           )}
-        </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-bold text-[#112F5C]">Evaluaciones a su cargo (2026-2)</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstado('borradores')}
+                  className={`inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl shadow transition ${filtroEstado === 'borradores' ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                >
+                  <FaSave className="inline mr-1" /> Borradores
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstado('activas')}
+                  className={`inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl shadow transition ${filtroEstado === 'activas' ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                >
+                  <FaCheckCircle className="inline mr-1" /> Activas
+                </button>
+                {permisoCrud && (
+                  <button
+                    type="button"
+                    onClick={abrirCreacion}
+                    className="inline-flex items-center gap-2 bg-[#112F5C] hover:bg-blue-900 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow transition"
+                  >
+                    <FaPlus /> Nueva evaluación
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* ... tabla de evaluaciones ... */}
         <div className="overflow-x-auto">
-          {evaluaciones.length === 0 ? (
+          {evaluacionesFiltradas.length === 0 ? (
             <div className="text-center py-12 text-gray-400">
               <FaClipboardList className="text-4xl mx-auto mb-3 text-gray-300" />
-              <p className="text-xs font-semibold text-gray-500">No tiene evaluaciones asignadas actualmente.</p>
+              <p className="text-xs font-semibold text-gray-500">No hay evaluaciones para el filtro seleccionado.</p>
             </div>
           ) : (
             <table className="w-full text-left text-xs border-collapse">
@@ -353,17 +395,28 @@ export default function DocenteCrearPruebas() {
                   <th className="px-4 py-3">MOMENTO / SEMESTRE</th>
                   <th className="px-4 py-3">GRUPO / JORNADA</th>
                   <th className="px-4 py-3 text-center">RAPS</th>
+                  <th className="px-4 py-3 text-center">FECHAS</th>
                   <th className="px-4 py-3 text-center">ESTADO</th>
                   <th className="px-4 py-3 text-center">ACCIONES</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {evaluaciones.map((ev, idx) => (
+                {evaluacionesFiltradas.map((ev, idx) => (
                   <tr key={ev.id_evaluacion || idx} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3.5 font-bold text-[#112F5C]">{ev.nombre}</td>
                     <td className="px-4 py-3.5 text-gray-600">Semestre {ev.semestre} — {ev.momento}</td>
                     <td className="px-4 py-3.5 text-gray-600">{ev.grupo} — {ev.jornada}</td>
                     <td className="px-4 py-3.5 text-center text-gray-600">{ev.cantidad_raps}</td>
+                    <td className="px-4 py-3.5 text-center text-gray-600">
+                      {ev.fecha_inicio && ev.fecha_fin ? (
+                        <div className="text-[10px]">
+                          <div>Inicio: {new Date(ev.fecha_inicio).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                          <div>Fin: {new Date(ev.fecha_fin).toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3.5 text-center">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${colorEstado(ev.estado)}`}>
                         {ev.estado}
@@ -371,45 +424,19 @@ export default function DocenteCrearPruebas() {
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex flex-wrap items-center justify-center gap-1.5">
+                        {ev.estado !== 'ACTIVA' && (
+                          <button
+                            onClick={() => navigate(`/docente/evaluaciones/editor/${ev.id_evaluacion}`)}
+                            className="bg-[#112F5C] hover:bg-blue-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg transition"
+                          >
+                            <FaEdit className="inline mr-1" /> Redactar Preguntas
+                          </button>
+                        )}
                         <button
-                          onClick={() => navigate(`/docente/evaluaciones/editor/${ev.id_evaluacion}`)}
-                          className="bg-[#112F5C] hover:bg-blue-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg transition"
+                          onClick={() => navigate(`/docente/evaluaciones/calificar/${ev.id_evaluacion}`)}
+                          className="bg-[#008A52] hover:bg-emerald-700 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg transition"
                         >
-                          <FaEdit className="inline mr-1" /> Redactar Preguntas
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => abrirEdicion(ev)}
-                          disabled={!permisoCrud}
-                          title={
-                            permisoCrud
-                              ? 'Editar los datos de la evaluación'
-                              : 'Modo CRUD deshabilitado: el administrador no le ha otorgado acceso.'
-                          }
-                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition ${
-                            permisoCrud
-                              ? 'border-[#112F5C] text-[#112F5C] hover:bg-[#112F5C] hover:text-white'
-                              : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
-                          }`}
-                        >
-                          {permisoCrud ? <FaEdit className="inline mr-1" /> : <FaLock className="inline mr-1" />} Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => borrarEvaluacion(ev)}
-                          disabled={!permisoCrud}
-                          title={
-                            permisoCrud
-                              ? 'Eliminar la evaluación'
-                              : 'Modo CRUD deshabilitado: el administrador no le ha otorgado acceso.'
-                          }
-                          className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition ${
-                            permisoCrud
-                              ? 'border-[#B3282D] text-[#B3282D] hover:bg-[#B3282D] hover:text-white'
-                              : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
-                          }`}
-                        >
-                          {permisoCrud ? <FaTrash className="inline mr-1" /> : <FaLock className="inline mr-1" />} Eliminar
+                          <FaCheck className="inline mr-1" /> Calificar Abiertas
                         </button>
                       </div>
                     </td>
@@ -444,6 +471,48 @@ export default function DocenteCrearPruebas() {
               className="pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-xl w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-[#112F5C]/20"
             />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <select
+            aria-label="Filtrar por semestre"
+            value={filtrosHistorial.semestre}
+            onChange={(e) => setFiltrosHistorial((actual) => ({ ...actual, semestre: e.target.value }))}
+            className="px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white"
+          >
+            <option value="">Todos los semestres</option>
+            {semestresHistorial.map((semestre) => <option key={semestre} value={semestre}>{semestre}.º Semestre</option>)}
+          </select>
+          <select
+            aria-label="Filtrar por grupo"
+            value={filtrosHistorial.grupo}
+            onChange={(e) => setFiltrosHistorial((actual) => ({ ...actual, grupo: e.target.value }))}
+            className="px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white"
+          >
+            <option value="">Todos los grupos</option>
+            {gruposHistorial.map((fila) => <option key={fila.id_grupo} value={fila.id_grupo}>{fila.grupo} · {fila.jornada}</option>)}
+          </select>
+          <select
+            aria-label="Filtrar por promedio"
+            value={filtrosHistorial.promedio}
+            onChange={(e) => setFiltrosHistorial((actual) => ({ ...actual, promedio: e.target.value }))}
+            className="px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white"
+          >
+            <option value="">Todos los promedios</option>
+            <option value="sin-respuestas">Sin respuestas</option>
+            <option value="menor-60">Menor a 60%</option>
+            <option value="60-79">De 60% a 79.9%</option>
+            <option value="80-mas">80% o más</option>
+          </select>
+          <select
+            aria-label="Filtrar por evaluación"
+            value={filtrosHistorial.evaluacion}
+            onChange={(e) => setFiltrosHistorial((actual) => ({ ...actual, evaluacion: e.target.value }))}
+            className="px-3 py-2 text-xs border border-gray-200 rounded-xl bg-white"
+          >
+            <option value="">Todas las evaluaciones</option>
+            {historial.map((fila) => <option key={fila.id_evaluacion} value={fila.id_evaluacion}>{fila.evaluacion}</option>)}
+          </select>
         </div>
 
         {cargandoHistorial ? (
@@ -483,7 +552,19 @@ export default function DocenteCrearPruebas() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {historialFiltrado.map((fila) => (
-                  <tr key={fila.id_evaluacion} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={fila.id_evaluacion}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => abrirDetalleHistorial(fila)}
+                    onKeyDown={(evento) => {
+                      if (evento.key === 'Enter' || evento.key === ' ') {
+                        evento.preventDefault();
+                        abrirDetalleHistorial(fila);
+                      }
+                    }}
+                    className="hover:bg-blue-50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#112F5C]"
+                  >
                     <td className="px-4 py-3.5">
                       <p className="font-bold text-[#112F5C]">{fila.evaluacion}</p>
                       <p className="text-gray-500">{fila.grupo} · {fila.jornada}</p>

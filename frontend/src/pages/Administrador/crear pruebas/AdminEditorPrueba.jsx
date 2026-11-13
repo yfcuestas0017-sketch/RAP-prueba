@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
@@ -11,6 +10,7 @@ import {
   FaLock,
   FaLockOpen
 } from 'react-icons/fa';
+import { API_BASE_URL } from '../../../config';
 
 export default function AdminEditorPrueba() {
   const { idPrueba } = useParams();
@@ -87,40 +87,21 @@ export default function AdminEditorPrueba() {
       const res = await respuesta.json();
       if (!respuesta.ok) throw new Error(res.mensaje || 'Error al reasignar el docente');
 
-      mostrarExito(res.mensaje || 'Docente reasignado correctamente.');
-      cargarDetalle();
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const handleCambiarEstado = async (estado) => {
-    try {
-      setGuardando(true);
-      setMensajeExito('');
-      const respuesta = await fetch(`${API}/${idPrueba}/estado`, {
+      // Una evaluación recién asignada debe quedar como borrador mientras el
+      // docente prepara sus preguntas. La publicación se controla aparte.
+      const respuestaEstado = await fetch(`${API}/${idPrueba}/estado`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado })
+        body: JSON.stringify({ estado: 'BORRADOR' })
       });
-
-      const res = await respuesta.json();
-      if (!respuesta.ok) throw new Error(res.mensaje || 'Error al cambiar el estado');
-
-      const texto = {
-        ACTIVA: '¡Evaluación publicada con éxito!',
-        CERRADA: 'Evaluación cerrada correctamente.',
-        BORRADOR: 'Evaluación reabierta en modo borrador.'
-      };
-      alert(texto[estado] || res.mensaje);
-      if (estado === 'ACTIVA') {
-        navigate('/admin/evaluaciones/crear');
-      } else {
-        cargarDetalle();
+      const resultadoEstado = await respuestaEstado.json().catch(() => null);
+      if (!respuestaEstado.ok) {
+        throw new Error(resultadoEstado?.mensaje || 'El docente fue asignado, pero no se pudo dejar la evaluación en borrador.');
       }
+
+      mostrarExito('Docente asignado. La evaluación quedó en borrador.');
+      cargarDetalle();
     } catch (err) {
       alert(err.message);
     } finally {
@@ -293,38 +274,7 @@ export default function AdminEditorPrueba() {
 
             <div className="bg-blue-50 border border-blue-100 text-blue-800 text-[11px] px-4 py-2.5 rounded-xl">
               Las preguntas de cada RAP se redactan desde el módulo del docente asignado a la evaluación.
-            </div>
-
-            <div className="space-y-2">
-              {evaluacion && evaluacion.estado !== 'ACTIVA' && evaluacion.estado !== 'ELIMINADA' && (
-                <button
-                  onClick={() => handleCambiarEstado('ACTIVA')}
-                  disabled={guardando}
-                  className="w-full py-2.5 bg-[#008A52] hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition shadow flex items-center justify-center gap-2"
-                >
-                  <FaCheck /> Finalizar y Publicar Evaluación
-                </button>
-              )}
-
-              {evaluacion && evaluacion.estado === 'ACTIVA' && (
-                <button
-                  onClick={() => handleCambiarEstado('CERRADA')}
-                  disabled={guardando}
-                  className="w-full py-2.5 bg-gray-700 hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition shadow flex items-center justify-center gap-2"
-                >
-                  <FaLock /> Cerrar Evaluación
-                </button>
-              )}
-
-              {evaluacion && evaluacion.estado === 'CERRADA' && (
-                <button
-                  onClick={() => handleCambiarEstado('BORRADOR')}
-                  disabled={guardando}
-                  className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs rounded-xl transition shadow flex items-center justify-center gap-2"
-                >
-                  <FaLockOpen /> Reabrir en Borrador
-                </button>
-              )}
+              El estado de la evaluación lo controla el docente.
             </div>
           </div>
         </div>

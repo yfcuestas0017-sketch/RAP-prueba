@@ -1,17 +1,22 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FaPlus,
-  FaEdit,
-  FaTrashAlt,
   FaSyncAlt,
   FaExclamationCircle,
-  FaCheckCircle,
   FaFilePdf,
   FaFileWord,
   FaTimes,
   FaInfoCircle,
   FaBookOpen,
-  FaListAlt
+  FaListAlt,
+  FaEye,
+  FaPlus,
+  FaEdit,
+  FaTrashAlt,
+  FaSave,
+  FaArrowLeft,
+  FaUserTie,
+  FaUser,
+  FaCheckCircle
 } from 'react-icons/fa';
 import { saveAs } from 'file-saver';
 import { elementToDocxBlob } from '../../../utils/docxExporter.js';
@@ -31,10 +36,13 @@ import {
   actualizarFichaAdmin,
   eliminarFichaAdmin
 } from '../../../services/fichaService.js';
-import MicrocurriculoForm from './MicrocurriculoForm.jsx';
-import FichaForm from './FichaForm.jsx';
 import MicrocurriculoPreview from './MicrocurriculoPreview.jsx';
 import FichaPreview from './FichaPreview.jsx';
+import MicrocurriculoForm from './MicrocurriculoForm.jsx';
+import FichaForm from './FichaForm.jsx';
+import { impedirEnvioPorEnter } from '../../../utils/impedirEnvioPorEnter.js';
+import { SEMESTRES } from '../../../utils/microcurriculo.js';
+import { API_BASE_URL } from '../../../config';
 
 const LIMPIAR = (valor, defecto = '—') =>
   valor === undefined || valor === null || valor === '' ? defecto : valor;
@@ -64,23 +72,22 @@ const ESTADO_FICHA = {
 };
 
 const MICRO_VACIO = {
-  id_espacio_academico: '',
   codigo: 'DOC-CU-FR-002',
   version: '1',
   fecha_documento: new Date().toISOString().split('T')[0],
-  periodo: '',
+  id_espacio_academico: '',
   semestre: '',
+  periodo: '',
   modalidad: 'Presencial',
-  nivel: 'Profesional',
-  area: 'Disciplinar',
   creditos: '',
   horas_acompanamiento_directo: '',
   horas_trabajo_independiente: '',
-  prerrequisito: 'Ninguno',
   sintesis: '',
   proposito: '',
   justificacion: '',
-  competencia_central: ''
+  competencia_central: '',
+  competencia_central_codigo: '',
+  estado: 'Borrador'
 };
 
 const FICHA_VACIA = {
@@ -109,7 +116,8 @@ const FICHA_VACIA = {
   horario_atencion: '',
   lugar_atencion: '',
   nombre_docente: '',
-  semanas: []
+  semanas: [],
+  estado: 'Borrador'
 };
 
 export default function AdminMicrosFichas({ tipo } = {}) {
@@ -118,42 +126,56 @@ export default function AdminMicrosFichas({ tipo } = {}) {
   const [tabActiva, setTabActiva] = useState(tabInicial);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [exito, setExito] = useState('');
+  const [mensajeExito, setMensajeExito] = useState('');
 
   const [microcurriculos, setMicrocurriculos] = useState([]);
   const [fichas, setFichas] = useState([]);
   const [espaciosAcademicos, setEspaciosAcademicos] = useState([]);
   const [docentes, setDocentes] = useState([]);
   const [raps, setRaps] = useState([]);
+  const [adminUserId, setAdminUserId] = useState(null);
 
   const [filtroDocente, setFiltroDocente] = useState('');
   const [filtroEspacio, setFiltroEspacio] = useState('');
+  const [filtroPeriodo, setFiltroPeriodo] = useState('');
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
 
-  const [vista, setVista] = useState('lista');
-  const [modoEdicion, setModoEdicion] = useState(false);
-  const [idSeleccionado, setIdSeleccionado] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  // Clave del registro que se está exportando: `pdf-<id>` o `word-<id>`.
   const [exportando, setExportando] = useState('');
-  // Registro completo que se monta fuera de pantalla para exportarlo desde la
-  // tabla, sin necesidad de abrir el formulario de edición.
   const [exportData, setExportData] = useState(null);
 
   const [detalle, setDetalle] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
 
-  const [microData, setMicroData] = useState(MICRO_VACIO);
-  const [fichaData, setFichaData] = useState(FICHA_VACIA);
+  // Estados para formularios de crear/editar
+  const [editando, setEditando] = useState(null); // { tipo: 'micro'|'ficha', data: {...} }
+  const [guardando, setGuardando] = useState(false);
+  const [errorFormulario, setErrorFormulario] = useState('');
 
-  const pdfRef = useRef(null);
   const exportRef = useRef(null);
+  const pdfRef = useRef(null);
+
+  // Cargar ID del administrador actual
+  const cargarAdminUserId = useCallback(async () => {
+    try {
+      const respuesta = await fetch(`${API_BASE_URL}/api/admin/Perfil`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const resultado = await respuesta.json();
+      if (resultado.perfil?.id_user) {
+        setAdminUserId(String(resultado.perfil.id_user));
+      }
+    } catch (err) {
+      console.warn('No se pudo obtener ID de admin:', err);
+    }
+  }, []);
 
   const cargarCatalogos = useCallback(async () => {
     try {
       const [respuestaFiltros, respuestaRaps] = await Promise.all([
         fetchJSON('/api/admin/reportes/filtros'),
-        !moduloSeparado || tipo === 'fichas' ? fetchJSON('/api/admin/RAP') : Promise.resolve(null)
+        !moduloSeparado || tipo === 'fichas' ? fetchJSON('/api/adminRap/RAP') : Promise.resolve(null)
       ]);
 
       const data = respuestaFiltros?.data || {};
@@ -191,6 +213,7 @@ export default function AdminMicrosFichas({ tipo } = {}) {
     setLoading(true);
     setError('');
     try {
+      await cargarAdminUserId();
       if (!moduloSeparado) {
         await Promise.all([cargarMicrocurriculos(), cargarFichas()]);
       } else if (tipo === 'fichas') {
@@ -201,7 +224,7 @@ export default function AdminMicrosFichas({ tipo } = {}) {
     } finally {
       setLoading(false);
     }
-  }, [moduloSeparado, tipo, cargarMicrocurriculos, cargarFichas]);
+  }, [moduloSeparado, tipo, cargarMicrocurriculos, cargarFichas, cargarAdminUserId]);
 
   useEffect(() => {
     cargarCatalogos();
@@ -223,6 +246,7 @@ export default function AdminMicrosFichas({ tipo } = {}) {
     return lista.filter((item) => {
       if (filtroDocente && String(item.id_user_docente) !== String(filtroDocente)) return false;
       if (filtroEspacio && String(item.id_espacio_academico) !== String(filtroEspacio)) return false;
+      if (filtroPeriodo && String(item.periodo || '').trim() !== filtroPeriodo) return false;
       if (texto) {
         const haystack = [
           nombreDocente(item),
@@ -241,10 +265,24 @@ export default function AdminMicrosFichas({ tipo } = {}) {
     });
   };
 
+  const periodosDisponibles = useMemo(() => {
+    const set = new Set();
+    microcurriculos.forEach((item) => {
+      const p = String(item.periodo || '').trim();
+      if (p) set.add(p);
+    });
+    fichas.forEach((item) => {
+      const p = String(item.periodo || '').trim();
+      if (p) set.add(p);
+    });
+    return Array.from(set).sort();
+  }, [microcurriculos, fichas]);
+
   const microsFiltrados = useMemo(() => filtrar(microcurriculos), [
     microcurriculos,
     filtroDocente,
     filtroEspacio,
+    filtroPeriodo,
     filtroBusqueda
   ]);
 
@@ -252,145 +290,17 @@ export default function AdminMicrosFichas({ tipo } = {}) {
     fichas,
     filtroDocente,
     filtroEspacio,
+    filtroPeriodo,
     filtroBusqueda
   ]);
 
   const listaActual = tabActiva === 'micros' ? microsFiltrados : fichasFiltradas;
 
-  // ---------- Navegación de vistas ----------
-  const irALista = () => {
-    setVista('lista');
-    setIdSeleccionado(null);
-    setModoEdicion(false);
-  };
-
-  const nuevoMicro = () => {
-    setMicroData({ ...MICRO_VACIO });
-    setModoEdicion(false);
-    setIdSeleccionado(null);
-    setVista('formulario');
-  };
-
-  const nuevaFicha = () => {
-    setFichaData({
-      ...FICHA_VACIA,
-      semanas: Array.from({ length: 17 }, (_, i) => ({
-        semana: `Semana ${i + 1}`,
-        contenido_analitico: '',
-        estrategias_didacticas: '',
-        evaluacion: ''
-      }))
-    });
-    setModoEdicion(false);
-    setIdSeleccionado(null);
-    setVista('formulario');
-  };
-
-  const editarMicro = async (id) => {
-    try {
-      setLoading(true);
-      const data = await obtenerMicrocurriculoAdmin(id);
-      if (!data?.success) throw new Error(data?.mensaje || 'Error al obtener el detalle');
-      setMicroData(data.microcurriculo);
-      setModoEdicion(true);
-      setIdSeleccionado(id);
-      setVista('formulario');
-    } catch (err) {
-      setExito('');
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const editarFicha = async (id) => {
-    try {
-      setLoading(true);
-      const data = await obtenerFichaAdmin(id);
-      if (!data?.success) throw new Error(data?.mensaje || 'Error al obtener el detalle');
-      const ficha = { ...FICHA_VACIA, ...data.ficha };
-      ficha.semanas = Array.isArray(data.ficha.semanas) ? data.ficha.semanas : [];
-      setFichaData(ficha);
-      setModoEdicion(true);
-      setIdSeleccionado(id);
-      setVista('formulario');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ---------- Guardar ----------
-  const guardarMicro = async (e) => {
-    e.preventDefault();
-    if (!microData.id_espacio_academico || !microData.periodo) {
-      window.alert('El espacio académico y el periodo son obligatorios.');
-      return;
-    }
-    try {
-      setGuardando(true);
-      setError('');
-      const data = modoEdicion
-        ? await actualizarMicrocurriculoAdmin(idSeleccionado, microData)
-        : await crearMicrocurriculoAdmin(microData);
-      if (!data?.success) throw new Error(data?.mensaje || 'Error al guardar');
-      setExito(
-        modoEdicion ? 'Microcurrículo actualizado correctamente' : 'Microcurrículo registrado con éxito'
-      );
-      setTimeout(() => setExito(''), 3000);
-      await cargarMicrocurriculos();
-      irALista();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const guardarFicha = async (e) => {
-    e.preventDefault();
-    if (!fichaData.id_espacio_academico) {
-      window.alert('Debes seleccionar un espacio académico.');
-      return;
-    }
-    try {
-      setGuardando(true);
-      setError('');
-      const data = modoEdicion
-        ? await actualizarFichaAdmin(idSeleccionado, fichaData)
-        : await crearFichaAdmin(fichaData);
-      if (!data?.success) throw new Error(data?.mensaje || 'Error al guardar');
-      setExito(modoEdicion ? 'Ficha actualizada correctamente' : 'Ficha registrada con éxito');
-      setTimeout(() => setExito(''), 3000);
-      await cargarFichas();
-      irALista();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  // ---------- Eliminar ----------
-  const eliminarItem = async (item) => {
-    const esMicro = tabActiva === 'micros';
-    const etiqueta = esMicro ? 'este microcurrículo' : 'esta ficha';
-    if (!window.confirm(`¿Está seguro de eliminar ${etiqueta}?`)) return;
-    try {
-      setError('');
-      const data = esMicro
-        ? await eliminarMicrocurriculoAdmin(item.id_microcurriculo)
-        : await eliminarFichaAdmin(item.id_ficha);
-      if (!data?.success) throw new Error(data?.mensaje || 'No se pudo eliminar');
-      setExito(esMicro ? 'Microcurrículo eliminado' : 'Ficha eliminada');
-      setTimeout(() => setExito(''), 3000);
-      if (esMicro) await cargarMicrocurriculos();
-      else await cargarFichas();
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  // Determinar si el registro pertenece al admin actual
+  const esPropio = useCallback((item) => {
+    if (!adminUserId) return false;
+    return String(item.id_user_docente) === String(adminUserId);
+  }, [adminUserId]);
 
   // ---------- Detalle ----------
   const verDetalle = async (item) => {
@@ -411,9 +321,6 @@ export default function AdminMicrosFichas({ tipo } = {}) {
   };
 
   // ---------- Exportación ----------
-  // El documento se arma fuera de pantalla a partir del registro completo
-  // consultado a la API, de modo que el PDF y el Word se generan desde la
-  // tabla sin entrar a editar.
   const exportarItem = async (item, formato) => {
     if (exportando) return;
     const esMicro = tabActiva === 'micros';
@@ -442,8 +349,6 @@ export default function AdminMicrosFichas({ tipo } = {}) {
 
       setExportData({ tipo: esMicro ? 'micros' : 'fichas', data: registro });
 
-      // Espera a que React monte el documento oculto y el navegador lo maquete
-      // antes de capturarlo.
       await new Promise((resolve) => {
         let frame = 0;
         const paso = () => {
@@ -486,7 +391,131 @@ export default function AdminMicrosFichas({ tipo } = {}) {
   const exportandoPDFde = (id) => exportando === `pdf-${id}`;
   const exportandoWordde = (id) => exportando === `word-${id}`;
 
-  if (loading && vista === 'lista' && microcurriculos.length === 0 && fichas.length === 0) {
+  // Vistas: 'lista' | 'formulario' | 'ver-docentes'
+  const [vista, setVista] = useState('lista');
+  const [vistaDocentes, setVistaDocentes] = useState(null); // tipo: 'micros' | 'fichas'
+
+  // ---------- Formulario: Crear/Editar ----------
+  const iniciarNuevo = () => {
+    const esMicro = tabActiva === 'micros';
+    setEditando({
+      tipo: esMicro ? 'micro' : 'ficha',
+      data: esMicro ? { ...MICRO_VACIO } : { ...FICHA_VACIA },
+      modoEdicion: false
+    });
+    setErrorFormulario('');
+    setMensajeExito('');
+    setVista('formulario');
+  };
+
+  const iniciarEdicion = (item) => {
+    const esMicro = tabActiva === 'micros';
+    // Cargar detalle completo antes de editar
+    const cargarParaEditar = async () => {
+      try {
+        setErrorFormulario('');
+        const data = esMicro
+          ? await obtenerMicrocurriculoAdmin(item.id_microcurriculo)
+          : await obtenerFichaAdmin(item.id_ficha);
+        if (!data?.success) throw new Error(data?.mensaje || 'No se pudo cargar para editar');
+        const registroCompleto = esMicro ? data.microcurriculo : data.ficha;
+        // Asegurar que semanas sea array para fichas
+        if (!esMicro) {
+          registroCompleto.semanas = Array.isArray(registroCompleto.semanas) ? registroCompleto.semanas : [];
+        }
+        setEditando({
+          tipo: esMicro ? 'micro' : 'ficha',
+          data: registroCompleto,
+          modoEdicion: true
+        });
+        setVista('formulario');
+      } catch (err) {
+        setErrorFormulario(err.message);
+      }
+    };
+    cargarParaEditar();
+  };
+
+  const cancelarEdicion = () => {
+    setEditando(null);
+    setErrorFormulario('');
+    setVista('lista');
+  };
+
+  const handleGuardar = async (e, formData) => {
+    e.preventDefault();
+    setErrorFormulario('');
+    setGuardando(true);
+
+    try {
+      const esMicro = editando.tipo === 'micro';
+      const { modoEdicion, data } = editando;
+      // Preparar datos para enviar
+      const datosEnvio = { ...formData };
+      if (esMicro) {
+        // Para micro, asegurar campos requeridos
+        datosEnvio.estado = datosEnvio.estado || 'Borrador';
+      } else {
+        // Para ficha, asegurar semanas array
+        datosEnvio.semanas = Array.isArray(datosEnvio.semanas) ? datosEnvio.semanas : [];
+        datosEnvio.estado = datosEnvio.estado || 'Borrador';
+      }
+
+      let resultado;
+      if (modoEdicion) {
+        const id = esMicro ? data.id_microcurriculo : data.id_ficha;
+        resultado = esMicro
+          ? await actualizarMicrocurriculoAdmin(id, datosEnvio)
+          : await actualizarFichaAdmin(id, datosEnvio);
+      } else {
+        resultado = esMicro
+          ? await crearMicrocurriculoAdmin(datosEnvio)
+          : await crearFichaAdmin(datosEnvio);
+      }
+
+      if (!resultado?.success && !resultado?.ok) {
+        throw new Error(resultado?.mensaje || resultado?.message || 'Error al guardar');
+      }
+
+      setMensajeExito(modoEdicion ? 'Actualizado correctamente' : 'Creado correctamente');
+      cancelarEdicion();
+      await cargarTodo(); // Recargar lista
+      setTimeout(() => setMensajeExito(''), 4000);
+    } catch (err) {
+      console.error('Error guardando:', err);
+      setErrorFormulario(err.message || 'No fue posible guardar');
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleEliminar = async (item) => {
+    const esMicro = tabActiva === 'micros';
+    const id = esMicro ? item.id_microcurriculo : item.id_ficha;
+    const nombre = esMicro ? 'microcurrículo' : 'ficha';
+
+    if (!window.confirm(`¿Eliminar este ${nombre}? Esta acción no se puede deshacer.`)) return;
+
+    setError('');
+    try {
+      const resultado = esMicro
+        ? await eliminarMicrocurriculoAdmin(id)
+        : await eliminarFichaAdmin(id);
+
+      if (!resultado?.success && !resultado?.ok) {
+        throw new Error(resultado?.mensaje || resultado?.message || 'Error al eliminar');
+      }
+
+      setMensajeExito('Eliminado correctamente');
+      await cargarTodo();
+      setTimeout(() => setMensajeExito(''), 4000);
+    } catch (err) {
+      console.error('Error eliminando:', err);
+      setError(err.message || 'No fue posible eliminar');
+    }
+  };
+
+  if (loading && microcurriculos.length === 0 && fichas.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
@@ -499,429 +528,327 @@ export default function AdminMicrosFichas({ tipo } = {}) {
     );
   }
 
-  if (vista === 'formulario') {
-    return (
-      <div className="w-full animate-fade-in space-y-6">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm">
-            <FaExclamationCircle className="text-red-600 text-base shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {tabActiva === 'micros' ? (
-          <MicrocurriculoForm
-            formData={microData}
-            setFormData={setMicroData}
-            espaciosAcademicos={espaciosAcademicos}
-            nombreEspacioAcademico={nombreEspacioAcademico}
-            guardando={guardando}
-            modoEdicion={modoEdicion}
-            pdfRef={pdfRef}
-            onSubmit={guardarMicro}
-            onCancelar={irALista}
-          />
-        ) : (
-          <FichaForm
-            formData={fichaData}
-            setFormData={setFichaData}
-            espaciosAcademicos={espaciosAcademicos}
-            raps={raps}
-            guardando={guardando}
-            modoEdicion={modoEdicion}
-            pdfRef={pdfRef}
-            onSubmit={guardarFicha}
-            onCancelar={irALista}
-          />
-        )}
-      </div>
-    );
-  }
+  const tituloModulo = tabActiva === 'micros' ? 'Microcurrículo' : 'Fichas de Desarrollo Temático';
+  const iconoModulo = tabActiva === 'micros' ? FaBookOpen : FaListAlt;
+  const btnNuevoTexto = tabActiva === 'micros' ? 'Nuevo Microcurrículo' : 'Nueva Ficha';
+  const btnNuevoIcono = tabActiva === 'micros' ? FaBookOpen : FaListAlt;
 
   return (
     <div className="w-full animate-fade-in space-y-6">
-      {/* Encabezado */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#112F5C]">
-            {tabActiva === 'micros' ? 'Microcurrículo' : 'Fichas de Desarrollo Temático'}
-          </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Consulte y gestione los documentos curriculares diligenciados por los docentes.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={tabActiva === 'micros' ? nuevoMicro : nuevaFicha}
-          className="bg-[#112F5C] hover:bg-blue-900 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2"
-        >
-          <FaPlus />
-          {tabActiva === 'micros' ? 'Crear Microcurrículo' : 'Crear Ficha'}
-        </button>
-      </div>
-
-      {/* Avisos */}
-      {exito && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm">
-          <FaCheckCircle className="text-emerald-600 text-base shrink-0" />
-          <span>{exito}</span>
-        </div>
-      )}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm">
-          <FaExclamationCircle className="text-red-600 text-base shrink-0" />
-          <span className="flex-1">{error}</span>
-          <button type="button" onClick={() => setError('')} aria-label="Cerrar aviso">
-            <FaTimes className="text-red-600" />
-          </button>
-        </div>
-      )}
-
-      {/* Pestañas */}
-      {!moduloSeparado && <div className="flex border-b border-gray-200 gap-6 text-xs font-bold" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tabActiva === 'micros'}
-          onClick={() => setTabActiva('micros')}
-          className={`pb-3 flex items-center gap-2 transition-all ${
-            tabActiva === 'micros'
-              ? 'border-b-2 border-[#B3282D] text-[#B3282D]'
-              : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <FaBookOpen /> Microcurrículos (Syllabus)
-          <span className="bg-gray-100 px-2 py-0.5 rounded-full text-[10px]">
-            {microcurriculos.length}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tabActiva === 'fichas'}
-          onClick={() => setTabActiva('fichas')}
-          className={`pb-3 flex items-center gap-2 transition-all ${
-            tabActiva === 'fichas'
-              ? 'border-b-2 border-[#B3282D] text-[#B3282D]'
-              : 'text-gray-400 hover:text-gray-600'
-          }`}
-        >
-          <FaListAlt /> Fichas de Desarrollo Temático
-          <span className="bg-gray-100 px-2 py-0.5 rounded-full text-[10px]">{fichas.length}</span>
-        </button>
-      </div>}
-
-      {/* Filtros */}
-      <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <label className="block text-[11px] font-semibold text-gray-700 mb-1">Buscar:</label>
-          <input
-            type="text"
-            value={filtroBusqueda}
-            onChange={(e) => setFiltroBusqueda(e.target.value)}
-            placeholder="Docente, espacio, periodo, código..."
-            className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-[11px] font-semibold text-gray-700 mb-1">Docente:</label>
-          <select
-            value={filtroDocente}
-            onChange={(e) => setFiltroDocente(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
-          >
-            <option value="">Todos</option>
-            {docentes.map((d) => (
-              <option key={d.id_user} value={d.id_user}>
-                {d.nombre} {d.apellido}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-            Espacio académico:
-          </label>
-          <select
-            value={filtroEspacio}
-            onChange={(e) => setFiltroEspacio(e.target.value)}
-            className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
-          >
-            <option value="">Todos</option>
-            {espaciosAcademicos.map((ea) => (
-              <option key={ea.id_espacio_academico} value={ea.id_espacio_academico}>
-                {ea.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Tabla */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {listaActual.length === 0 ? (
-          <p className="text-xs text-gray-500 p-8 text-center">
-            No se encontraron registros con los filtros seleccionados.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#112F5C] text-white font-semibold">
-                <tr>
-                  <th className="px-4 py-3">DOCENTE</th>
-                  <th className="px-4 py-3">ESPACIO ACADÉMICO</th>
-                  <th className="px-4 py-3">SEMESTRE</th>
-                  <th className="px-4 py-3">PERIODO</th>
-                  <th className="px-4 py-3">{tabActiva === 'micros' ? 'CÓDIGO / VERSIÓN' : 'GRUPO'}</th>
-                  <th className="px-4 py-3 text-center">ESTADO</th>
-                  <th className="px-4 py-3 text-center">ACCIONES</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {listaActual.map((item) => {
-                  const idItem = tabActiva === 'micros' ? item.id_microcurriculo : item.id_ficha;
-                  const estado = String(item.estado || 'Borrador');
-                  const estilo =
-                    (tabActiva === 'micros' ? ESTADO_MICRO : ESTADO_FICHA)[estado] ||
-                    'bg-gray-100 text-gray-600';
-
-                  return (
-                    <tr key={idItem} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3.5 font-bold text-gray-800">{nombreDocente(item)}</td>
-                      <td className="px-4 py-3.5 text-gray-600">
-                        {LIMPIAR(item.espacio_academico || nombreEspacioAcademico(item.id_espacio_academico))}
-                      </td>
-                      <td className="px-4 py-3.5 text-gray-600">{LIMPIAR(item.semestre)}</td>
-                      <td className="px-4 py-3.5 text-gray-600">{LIMPIAR(item.periodo)}</td>
-                      <td className="px-4 py-3.5 text-gray-600">
-                        {tabActiva === 'micros'
-                          ? `${LIMPIAR(item.codigo)} (v${LIMPIAR(item.version)})`
-                          : LIMPIAR(item.grupo)}
-                      </td>
-                      <td className="px-4 py-3.5 text-center">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${estilo}`}>
-                          {estado}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex flex-wrap items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => verDetalle(item)}
-                            className="border border-gray-200 hover:border-[#112F5C] text-[#112F5C] text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1"
-                          >
-                            <FaInfoCircle /> Ver
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => (tabActiva === 'micros' ? editarMicro(idItem) : editarFicha(idItem))}
-                            className="bg-[#112F5C] hover:bg-blue-900 text-white text-[11px] font-semibold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1"
-                          >
-                            <FaEdit /> Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => eliminarItem(item)}
-                            className="bg-[#B3282D] hover:bg-red-800 text-white text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1"
-                          >
-                            <FaTrashAlt />
-                          </button>
-                        </div>
-
-                        {/* Segunda fila de acciones: exportación directa */}
-                        <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap items-center justify-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => exportarItem(item, 'pdf')}
-                            disabled={Boolean(exportando)}
-                            title="Exportar a PDF"
-                            className="border border-[#B3282D]/40 hover:bg-[#B3282D] hover:border-[#B3282D] hover:text-white text-[#B3282D] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-wait"
-                          >
-                            <FaFilePdf />
-                            {exportandoPDFde(idItem) ? 'Generando...' : 'PDF'}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => exportarItem(item, 'word')}
-                            disabled={Boolean(exportando)}
-                            title="Exportar a Word"
-                            className="border border-[#0074B7]/40 hover:bg-[#0074B7] hover:border-[#0074B7] hover:text-white text-[#0074B7] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-wait"
-                          >
-                            <FaFileWord />
-                            {exportandoWordde(idItem) ? 'Generando...' : 'Word'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Modal de detalle */}
-      {detalle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
-              <h3 className="text-sm font-bold text-[#112F5C]">
+      {/* VISTA 1: LISTADO */}
+      {vista === 'lista' ? (
+        <div className="space-y-6">
+          {/* Encabezado */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-[#112F5C]">
+                <iconoModulo className="inline mr-2" /> {tituloModulo}
+              </h1>
+              <p className="text-xs text-gray-500 mt-0.5">
                 {tabActiva === 'micros'
-                  ? 'Detalle del Microcurrículo'
-                  : 'Detalle de la Ficha de Desarrollo Temático'}
-              </h3>
+                  ? 'Gestione los microcurrículos (syllabus) de los espacios académicos.'
+                  : 'Gestione las fichas de desarrollo temático de los grupos.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 self-start">
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-800">
+                <FaEdit /> Gestión completa
+              </span>
               <button
                 type="button"
-                onClick={() => setDetalle(null)}
-                aria-label="Cerrar detalle"
-                className="text-gray-400 hover:text-gray-700"
+                onClick={iniciarNuevo}
+                className="bg-[#112F5C] hover:bg-blue-900 text-white font-bold text-xs px-4 py-2 rounded-xl shadow transition flex items-center gap-2"
               >
-                <FaTimes />
+                <btnNuevoIcono /> {btnNuevoTexto}
               </button>
             </div>
+          </div>
 
-            {detalle._error ? (
-              <p className="px-6 py-8 text-center text-xs text-red-600">{detalle._error}</p>
+          {/* Mensajes */}
+          {mensajeExito && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm">
+              <FaCheckCircle className="text-emerald-600 text-base shrink-0" />
+              <span>{mensajeExito}</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm">
+              <FaExclamationCircle className="text-red-600 text-base shrink-0" />
+              <span className="flex-1">{error}</span>
+              <button type="button" onClick={() => setError('')} aria-label="Cerrar aviso">
+                <FaTimes className="text-red-600" />
+              </button>
+            </div>
+          )}
+
+          {/* Pestañas */}
+          {!moduloSeparado && (
+            <div className="flex border-b border-gray-200 gap-6 text-xs font-bold" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tabActiva === 'micros'}
+                onClick={() => setTabActiva('micros')}
+                className={`pb-3 flex items-center gap-2 transition-all ${
+                  tabActiva === 'micros'
+                    ? 'border-b-2 border-[#B3282D] text-[#B3282D]'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <FaBookOpen /> Microcurrículos (Syllabus)
+                <span className="bg-gray-100 px-2 py-0.5 rounded-full text-[10px]">
+                  {microcurriculos.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tabActiva === 'fichas'}
+                onClick={() => setTabActiva('fichas')}
+                className={`pb-3 flex items-center gap-2 transition-all ${
+                  tabActiva === 'fichas'
+                    ? 'border-b-2 border-[#B3282D] text-[#B3282D]'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <FaListAlt /> Fichas de Desarrollo Temático
+                <span className="bg-gray-100 px-2 py-0.5 rounded-full text-[10px]">{fichas.length}</span>
+              </button>
+            </div>
+          )}
+
+          {/* Filtros */}
+          <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Buscar:</label>
+              <input
+                type="text"
+                value={filtroBusqueda}
+                onChange={(e) => setFiltroBusqueda(e.target.value)}
+                placeholder="Docente, espacio, periodo, código..."
+                className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-700 mb-1">Docente:</label>
+              <select
+                value={filtroDocente}
+                onChange={(e) => setFiltroDocente(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
+              >
+                <option value="">Todos</option>
+                {docentes.map((d) => (
+                  <option key={d.id_user} value={d.id_user}>
+                    {d.nombre} {d.apellido}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                Espacio académico:
+              </label>
+              <select
+                value={filtroEspacio}
+                onChange={(e) => setFiltroEspacio(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
+              >
+                <option value="">Todos</option>
+                {espaciosAcademicos.map((ea) => (
+                  <option key={ea.id_espacio_academico} value={ea.id_espacio_academico}>
+                    {ea.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                Periodo académico:
+              </label>
+              <select
+                value={filtroPeriodo}
+                onChange={(e) => setFiltroPeriodo(e.target.value)}
+                className="w-full px-3.5 py-2 bg-white border border-gray-200 rounded-xl text-xs focus:outline-none"
+              >
+                <option value="">Todos</option>
+                {periodosDisponibles.map((periodo) => (
+                  <option key={periodo} value={periodo}>
+                    {periodo}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Tabla */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {listaActual.length === 0 ? (
+              <p className="text-xs text-gray-500 p-8 text-center">
+                No se encontraron registros con los filtros seleccionados.
+                {adminUserId ? ' Use "Nuevo" para crear el primero.' : ''}
+              </p>
             ) : (
-              <div className="px-6 py-4 text-xs text-gray-700 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <p>
-                    <span className="font-semibold text-gray-500">Docente:</span>{' '}
-                    {nombreDocente(detalle)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-500">Espacio académico:</span>{' '}
-                    {LIMPIAR(detalle.espacio_academico)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-500">Semestre:</span>{' '}
-                    {LIMPIAR(detalle.semestre)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-500">Periodo:</span>{' '}
-                    {LIMPIAR(detalle.periodo)}
-                  </p>
-                  <p>
-                    <span className="font-semibold text-gray-500">Estado:</span>{' '}
-                    {LIMPIAR(detalle.estado)}
-                  </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#112F5C] text-white font-semibold">
+                    <tr>
+                      <th className="px-4 py-3">DOCENTE</th>
+                      <th className="px-4 py-3">ESPACIO ACADÉMICO</th>
+                      <th className="px-4 py-3">SEMESTRE</th>
+                      <th className="px-4 py-3">PERIODO</th>
+                      <th className="px-4 py-3">{tabActiva === 'micros' ? 'CÓDIGO / VERSIÓN' : 'GRUPO'}</th>
+                      <th className="px-4 py-3 text-center">ESTADO</th>
+                      <th className="px-4 py-3 text-center">PROPIETARIO</th>
+                      <th className="px-4 py-3 text-center">ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {listaActual.map((item) => {
+                      const idItem = tabActiva === 'micros' ? item.id_microcurriculo : item.id_ficha;
+                      const estado = String(item.estado || 'Borrador');
+                      const estilo =
+                        (tabActiva === 'micros' ? ESTADO_MICRO : ESTADO_FICHA)[estado] ||
+                        'bg-gray-100 text-gray-600';
+                      const propio = esPropio(item);
 
-                  {tabActiva === 'micros' ? (
-                    <>
-                      <p>
-                        <span className="font-semibold text-gray-500">Código / versión:</span>{' '}
-                        {LIMPIAR(detalle.codigo)} (v{LIMPIAR(detalle.version)})
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Modalidad:</span>{' '}
-                        {LIMPIAR(detalle.modalidad)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Créditos:</span>{' '}
-                        {LIMPIAR(detalle.creditos)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Horas directas / indep.:</span>{' '}
-                        {LIMPIAR(detalle.horas_acompanamiento_directo)} /{' '}
-                        {LIMPIAR(detalle.horas_trabajo_independiente)}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p>
-                        <span className="font-semibold text-gray-500">Grupo:</span>{' '}
-                        {LIMPIAR(detalle.grupo)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Programa:</span>{' '}
-                        {LIMPIAR(detalle.programa)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Semestre:</span>{' '}
-                        {LIMPIAR(detalle.semestre)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Coordinador:</span>{' '}
-                        {LIMPIAR(detalle.coordinador)}
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                <div className="border-t border-gray-100 pt-3">
-                  <span className="font-semibold text-gray-500">Contenido:</span>
-                  {tabActiva === 'micros' ? (
-                    <div className="space-y-2 mt-2">
-                      <p>
-                        <span className="font-semibold text-gray-500">Síntesis:</span>{' '}
-                        {LIMPIAR(detalle.sintesis)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Propósito:</span>{' '}
-                        {LIMPIAR(detalle.proposito)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Justificación:</span>{' '}
-                        {LIMPIAR(detalle.justificacion)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Competencia central:</span>{' '}
-                        {LIMPIAR(detalle.competencia_central)}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 mt-2">
-                      <p>
-                        <span className="font-semibold text-gray-500">Objetivo de aprendizaje:</span>{' '}
-                        {LIMPIAR(detalle.objetivo_aprendizaje)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Competencia:</span>{' '}
-                        {LIMPIAR(detalle.competencia_central)}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-gray-500">Observaciones:</span>{' '}
-                        {LIMPIAR(detalle.observaciones)}
-                      </p>
-
-                      <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                        <table className="w-full text-left text-[11px]">
-                          <thead className="bg-gray-50 text-gray-600 font-semibold">
-                            <tr>
-                              <th className="px-3 py-2">SEMANA</th>
-                              <th className="px-3 py-2">CONTENIDO</th>
-                              <th className="px-3 py-2">ESTRATEGIAS</th>
-                              <th className="px-3 py-2">EVALUACIÓN</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {(detalle.semanas || []).map((s, i) => (
-                              <tr key={i}>
-                                <td className="px-3 py-2 font-semibold">{LIMPIAR(s.semana)}</td>
-                                <td className="px-3 py-2">{LIMPIAR(s.contenido_analitico)}</td>
-                                <td className="px-3 py-2">{LIMPIAR(s.estrategias_didacticas)}</td>
-                                <td className="px-3 py-2">{LIMPIAR(s.evaluacion)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                      return (
+                        <tr key={idItem} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3.5 font-bold text-gray-800">{nombreDocente(item)}</td>
+                          <td className="px-4 py-3.5 text-gray-600">
+                            {LIMPIAR(item.espacio_academico || nombreEspacioAcademico(item.id_espacio_academico))}
+                          </td>
+                          <td className="px-4 py-3.5 text-gray-600">{LIMPIAR(item.semestre)}</td>
+                          <td className="px-4 py-3.5 text-gray-600">{LIMPIAR(item.periodo)}</td>
+                          <td className="px-4 py-3.5 text-gray-600">
+                            {tabActiva === 'micros'
+                              ? `${LIMPIAR(item.codigo)} (v${LIMPIAR(item.version)})`
+                              : LIMPIAR(item.grupo)}
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${estilo}`}>
+                              {estado}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-center">
+                            {propio ? (
+                              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                <FaUserTie className="text-[9px]" /> Mío
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 bg-gray-50 text-gray-600 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                                <FaUser className="text-[9px]" /> Docente
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex flex-wrap items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => verDetalle(item)}
+                                className="border border-gray-200 hover:border-[#112F5C] text-[#112F5C] text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1"
+                              >
+                                <FaInfoCircle /> Ver
+                              </button>
+                              {propio && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => iniciarEdicion(item)}
+                                    className="border border-[#112F5C]/40 hover:bg-[#112F5C] hover:border-[#112F5C] hover:text-white text-[#112F5C] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1"
+                                  >
+                                    <FaEdit /> Editar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEliminar(item)}
+                                    className="border border-[#B3282D]/40 hover:bg-[#B3282D] hover:border-[#B3282D] hover:text-white text-[#B3282D] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1"
+                                  >
+                                    <FaTrashAlt /> Eliminar
+                                  </button>
+                                </>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => exportarItem(item, 'pdf')}
+                                disabled={Boolean(exportando)}
+                                title="Exportar a PDF"
+                                className="border border-[#B3282D]/40 hover:bg-[#B3282D] hover:border-[#B3282D] hover:text-white text-[#B3282D] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-wait"
+                              >
+                                <FaFilePdf />
+                                {exportandoPDFde(idItem) ? 'Generando...' : 'PDF'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => exportarItem(item, 'word')}
+                                disabled={Boolean(exportando)}
+                                title="Exportar a Word"
+                                className="border border-[#0074B7]/40 hover:bg-[#0074B7] hover:border-[#0074B7] hover:text-white text-[#0074B7] text-[10px] font-semibold px-2.5 py-1.5 rounded-lg transition inline-flex items-center gap-1 disabled:opacity-50 disabled:cursor-wait"
+                              >
+                                <FaFileWord />
+                                {exportandoWordde(idItem) ? 'Generando...' : 'Word'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
         </div>
-      )}
+      ) : (
+        /* VISTA 2: FORMULARIO (Pantalla completa como en Docente) */
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="text-left">
+              <h2 className="text-lg font-bold text-[#112F5C]">
+                {editando?.modoEdicion ? 'Editar' : 'Nuevo'} {tabActiva === 'micros' ? 'Microcurrículo' : 'Ficha'}
+              </h2>
+              <p className="text-[11px] text-gray-500 mt-0.5">
+                Complete la información requerida para el documento institucional.
+              </p>
+            </div>
+          </div>
 
-      {cargandoDetalle && (
-        <div className="fixed bottom-4 right-4 bg-white border border-gray-200 shadow-lg rounded-xl px-4 py-2 text-[11px] text-gray-600 flex items-center gap-2 z-40">
-          <FaSyncAlt className="animate-spin" /> Cargando detalle...
+          {errorFormulario && (
+            <div className="bg-red-50 border border-red-200 text-red-800 text-xs px-4 py-3 rounded-2xl flex items-center gap-3 shadow-sm">
+              <FaExclamationCircle className="text-red-600 text-base shrink-0" />
+              <span>{errorFormulario}</span>
+            </div>
+          )}
+
+          {editando?.tipo === 'micro' ? (
+            <MicrocurriculoForm
+              formData={editando.data}
+              setFormData={(fn) => setEditando((prev) => ({ ...prev, data: typeof fn === 'function' ? fn(prev.data) : fn }))}
+              espaciosAcademicos={espaciosAcademicos}
+              nombreEspacioAcademico={nombreEspacioAcademico}
+              guardando={guardando}
+              modoEdicion={editando.modoEdicion}
+              pdfRef={pdfRef}
+              onSubmit={(e) => handleGuardar(e, editando.data)}
+              onCancelar={cancelarEdicion}
+            />
+          ) : (
+            <FichaForm
+              formData={editando.data}
+              setFormData={(fn) => setEditando((prev) => ({ ...prev, data: typeof fn === 'function' ? fn(prev.data) : fn }))}
+              espaciosAcademicos={espaciosAcademicos}
+              raps={raps}
+              guardando={guardando}
+              modoEdicion={editando.modoEdicion}
+              pdfRef={pdfRef}
+              onSubmit={(e) => handleGuardar(e, editando.data)}
+              onCancelar={cancelarEdicion}
+            />
+          )}
         </div>
       )}
 

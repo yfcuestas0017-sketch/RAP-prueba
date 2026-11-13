@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -15,6 +14,7 @@ import {
   FaGraduationCap
 } from "react-icons/fa";
 import { esProyectoGrado } from "../../../utils/proyectos.js";
+import { API_BASE_URL } from '../../../config';
 
 export default function DocenteInicio() {
   const [datos, setDatos] = useState(null);
@@ -227,23 +227,28 @@ export default function DocenteInicio() {
           </Link>
         </div>
 
-        {/* Card 3: Archivos Recibidos */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xl shrink-0">
+        {/* Card 3: Accesos a proyectos por tipo */}
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-lg shrink-0">
               <FaFolderOpen />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-gray-800 uppercase mb-1">Archivos recibidos</h3>
-              <p className="text-2xl font-bold text-[#112F5C]">{estadisticas.archivosRecibidos} Archivos</p>
-              <p className="text-[11px] text-gray-400 mt-1 leading-tight">Proyectos registrados</p>
+              <h3 className="text-xs font-bold text-gray-800 uppercase">Proyectos recibidos</h3>
+              <p className="text-[11px] text-gray-400 mt-1">Acceda por modalidad de proyecto</p>
             </div>
           </div>
-          <Link to="/docente/archivos" className="text-xs font-bold text-[#112F5C] mt-4 flex items-center gap-1 hover:underline">
-            Ver archivos <span className="text-[10px]">&rarr;</span>
-          </Link>
+          <div className="space-y-2">
+            <Link to="/docente/evaluaciones/interestructurante" className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 px-3 py-2.5 hover:border-[#112F5C] hover:bg-blue-50/50 transition">
+              <span className="text-xs font-semibold text-[#112F5C]">EXABRE</span>
+              <span className="text-[11px] font-bold text-gray-500">{proyectosIntegradores.length} <span className="font-normal">proyectos</span></span>
+            </Link>
+            <Link to="/docente/evaluaciones/tesis" className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 px-3 py-2.5 hover:border-[#B3282D] hover:bg-red-50/50 transition">
+              <span className="text-xs font-semibold text-[#B3282D]">Proyecto de grado</span>
+              <span className="text-[11px] font-bold text-gray-500">{proyectosGrado.length} <span className="font-normal">proyectos</span></span>
+            </Link>
+          </div>
         </div>
-
       </div>
 
       {/* 3. SECCIÓN DE TABLA DE PROYECTOS RECIBIDOS */}

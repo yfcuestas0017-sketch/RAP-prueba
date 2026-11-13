@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import {
   FaUser,
@@ -11,6 +10,7 @@ import {
   FaInfoCircle
 } from 'react-icons/fa';
 import "./DocentePerfil.css";
+import { API_BASE_URL } from '../../../config';
 
 export default function DocentePerfil() {
   const [loading, setLoading] = useState(true);

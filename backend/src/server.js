@@ -1,10 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
+const PgSession = require("connect-pg-simple")(session);
 
 require("dotenv").config();
 
 const passport = require("./config/passport");
+const pool = require("./config/database");
 
 const app = express();
 
@@ -12,38 +14,47 @@ const app = express();
 // las cookies "secure" funcionen correctamente.
 app.set("trust proxy", 1);
 
-// FRONTEND_URL puede traer una o varias URLs separadas por coma
-// (útil para tener la de Vercel de producción y previews a la vez).
-const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:5173")
-  .split(",")
-  .map((url) => url.trim());
+const isProduction = process.env.NODE_ENV === "production";
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const ORIGEN_LOCAL = /^http:\/\/(localhost|127\.0\.0\.1):\d+$/;
+const ORIGENES_PERMITIDOS = [...new Set([
+  FRONTEND_URL,
+  "http://localhost:5173",
+  "http://127.0.0.1:5173"
+])];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    // Permite peticiones sin origin (curl, health checks) y las de la lista.
-    if (!origin || allowedOrigins.includes(origin)) {
+  origin(origin, callback) {
+    if (!origin || ORIGENES_PERMITIDOS.includes(origin) || ORIGEN_LOCAL.test(origin)) {
       return callback(null, true);
     }
-    return callback(new Error("No permitido por CORS"));
+
+    return callback(null, false);
   },
   credentials: true
 }));
 
 app.use(express.json());
 
-const isProduction = process.env.NODE_ENV === "production";
-
 app.use(
   session({
+    store: new PgSession({
+      pool,
+      tableName: "session",
+      createTableIfMissing: true
+    }),
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
+      httpOnly: true,
       // En producción el frontend (Vercel) y el backend (Render) son
       // dominios distintos, por lo que la cookie debe ser "cross-site".
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-    },
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    }
   })
 );
 
@@ -84,6 +95,18 @@ const adminFichasRoutes = require("./routes/Admin/adminFichas");
 const adminInterestructuranteRoutes = require("./routes/Admin/adminintere");
 const adminTrabajoGradoRoutes = require("./routes/Admin/adminGrado");
 const adminCatalogoRoutes = require("./routes/Admin/adminCatalogo");
+const estudianteModalidadRoutes = require("./routes/Estudiante/modalidadGrado");
+const adminModalidadRoutes = require("./routes/Admin/adminmodalidad");
+const asistenteIARoutes = require("./routes/IA/asistenteIA");
+const docenteSaberProRoutes = require("./routes/Docente/saberPro");
+const adminSaberProRoutes = require("./routes/Admin/adminSaberPro");
+const catalogosDocumentosRoutes = require("./routes/Admin/Catalogosdocumentos");
+
+
+
+
+
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", exportUsersRoutes);
@@ -112,9 +135,20 @@ app.use("/api/admin/fichas-desarrollo", adminFichasRoutes);
 app.use("/api/admin/proyecto", adminInterestructuranteRoutes);
 app.use("/api/admin/trabajo-grado", adminTrabajoGradoRoutes);
 app.use("/api/admin/catalogos", adminCatalogoRoutes);
+app.use("/api/estudiante/modalidad-grado", estudianteModalidadRoutes);
+app.use("/api/admin/modalidad-grado", adminModalidadRoutes);
+app.use("/api/ia/saber-pro", asistenteIARoutes);
+app.use("/api/docente/saber-pro", docenteSaberProRoutes);
+app.use("/api/admin/saber-pro", adminSaberProRoutes);
+app.use("/api/admin/catalogosdocumentos", catalogosDocumentosRoutes);
 
 
-const PORT = process.env.PORT || 3000;
+
+
+// En producción (Render) el puerto lo asigna la plataforma mediante PORT.
+// En desarrollo se mantiene el 3000 de siempre, aunque el .env tenga otro PORT,
+// porque el frontend y el callback de Google apuntan a http://localhost:3000.
+const PORT = isProduction ? (process.env.PORT || 3000) : 3000;
 
 app.listen(PORT, () => {
   console.log(`Servidor ejecutándose en el puerto ${PORT}`);

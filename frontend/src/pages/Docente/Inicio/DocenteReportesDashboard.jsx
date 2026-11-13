@@ -1,4 +1,3 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -15,6 +14,7 @@ import {
   FaExclamationCircle
 } from "react-icons/fa";
 import { esProyectoGrado } from "../../utils/proyectos.js";
+import { API_BASE_URL } from '../../../config';
 
 const DocenteInicio = () => {
   const [datos, setDatos] = useState(null);

@@ -1,7 +1,7 @@
-import { API_BASE_URL } from '../../../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaSyncAlt, FaExclamationCircle, FaCheckCircle, FaCheck } from 'react-icons/fa';
+import { API_BASE_URL } from '../../../config';
 
 const OPCIONES_INICIALES = [
   { texto: '' },
@@ -46,6 +46,7 @@ export default function DocenteEditorPrueba() {
   const [raps, setRaps] = useState([]);
   const [idRap, setIdRap] = useState('');
   const [preguntas, setPreguntas] = useState([]);
+  const [preguntasBorrador, setPreguntasBorrador] = useState([]);
 
   const [preguntaForm, setPreguntaForm] = useState(() => nuevoFormularioPregunta());
 
@@ -114,7 +115,7 @@ export default function DocenteEditorPrueba() {
     }
   };
 
-  const handleGuardarPregunta = async (e) => {
+  const handleGuardarPregunta = (e) => {
     e.preventDefault();
     if (!idRap) {
       alert('La evaluación no tiene RAPs vinculados. Agregue un RAP desde el módulo del administrador.');
@@ -134,36 +135,64 @@ export default function DocenteEditorPrueba() {
       }
     }
 
+    // Agregar al borrador local
+    const nuevaPreguntaBorrador = {
+      id_borrador: Date.now(),
+      id_evaluacion_rap: idRap,
+      tipo_pregunta: preguntaForm.tipoPregunta,
+      enunciado: preguntaForm.enunciado.trim(),
+      puntaje: Number(preguntaForm.puntaje) || 1,
+      opciones: esCerrada
+        ? preguntaForm.opciones.map((op, idx) => ({
+          texto: op.texto.trim(),
+          correcta: idx === preguntaForm.correctaIndex
+        }))
+        : []
+    };
+
+    setPreguntasBorrador([...preguntasBorrador, nuevaPreguntaBorrador]);
+    setPreguntaForm(nuevoFormularioPregunta(preguntaForm.tipoPregunta));
+    setMensajeExito('Pregunta agregada al borrador.');
+    setTimeout(() => setMensajeExito(''), 3000);
+  };
+
+  const handlePublicarTodo = async () => {
+    if (preguntasBorrador.length === 0) return;
+
+    const confirmado = window.confirm(
+      `¿Está seguro de publicar las ${preguntasBorrador.length} preguntas en borrador? Una vez publicadas no podrán modificarse.`
+    );
+    if (!confirmado) return;
+
     try {
       setGuardando(true);
       setError('');
-      const res = await fetch(`${API}/rap/${idRap}/preguntas`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo_pregunta: preguntaForm.tipoPregunta,
-          enunciado: preguntaForm.enunciado.trim(),
-          puntaje: Number(preguntaForm.puntaje) || 1,
-          ...(esCerrada
-            ? {
-              opciones: preguntaForm.opciones.map((op, idx) => ({
-                texto: op.texto.trim(),
-                correcta: idx === preguntaForm.correctaIndex
-              }))
-            }
-            : {})
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.mensaje || data.message || 'Error al guardar la pregunta');
 
-      setMensajeExito('Pregunta guardada en el banco correctamente.');
-      setTimeout(() => setMensajeExito(''), 3000);
-      setPreguntaForm(nuevoFormularioPregunta(preguntaForm.tipoPregunta));
+      for (const p of preguntasBorrador) {
+        const res = await fetch(`${API}/rap/${p.id_evaluacion_rap}/preguntas`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo_pregunta: p.tipo_pregunta,
+            enunciado: p.enunciado,
+            puntaje: p.puntaje,
+            ...(p.tipo_pregunta === 'CERRADA' ? { opciones: p.opciones } : {})
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          const errorMsg = data.mensaje || data.message || `Error ${res.status}`;
+          throw new Error(errorMsg);
+        }
+      }
+
+      setMensajeExito('Todas las preguntas han sido publicadas correctamente.');
+      setPreguntasBorrador([]);
       await cargarPreguntas(idRap);
+      setTimeout(() => setMensajeExito(''), 4000);
     } catch (err) {
-      alert(err.message);
+      alert(`Error al guardar: ${err.message}`);
     } finally {
       setGuardando(false);
     }
@@ -221,6 +250,7 @@ export default function DocenteEditorPrueba() {
       )}
 
       {evaluacion && (
+        <>
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <span className="text-[10px] font-bold text-blue-600 uppercase">EVALUACIÓN CREADA POR EL ADMINISTRADOR:</span>
@@ -237,6 +267,35 @@ export default function DocenteEditorPrueba() {
             <p className="text-[11px] text-gray-500">Puntaje total: {evaluacion.puntaje_total}</p>
           </div>
         </div>
+        {evaluacion.estado !== 'ACTIVA' && (
+          <button
+            type="button"
+            onClick={async () => {
+              if (!window.confirm('¿Finalizar prueba? La evaluación quedará activa y no podrá modificarse.')) return;
+              try {
+                const res = await fetch(`${API}/${evaluacion.id_evaluacion}/estado`, {
+                  method: 'PUT',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ estado: 'ACTIVA' })
+                });
+                if (!res.ok) {
+                  const data = await res.json().catch(() => ({}));
+                  throw new Error(data.mensaje || data.message || `Error ${res.status}`);
+                }
+                setMensajeExito('Evaluación finalizada y activada correctamente.');
+                await cargarEditorDocente();
+                setTimeout(() => setMensajeExito(''), 4000);
+              } catch (err) {
+                alert(`Error al activar: ${err.message}`);
+              }
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-6 py-3 rounded-xl shadow transition flex items-center gap-2"
+          >
+            <FaCheckCircle /> Finalizar prueba
+          </button>
+        )}
+        </>
       )}
 
       {raps.length === 0 ? (
@@ -365,17 +424,22 @@ export default function DocenteEditorPrueba() {
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t">
-              <button type="submit" disabled={guardando} className="bg-[#112F5C] hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow">
-                {guardando ? 'Guardando...' : 'Guardar Pregunta'}
+              <button type="submit" disabled={guardando} className="bg-[#112F5C] hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow flex items-center gap-2">
+                Agregar a Borrador
               </button>
-              <button type="button" onClick={() => navigate('/docente/evaluaciones/crear')} className="bg-[#008A52] hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow">
-                Finalizar y Volver al Listado
+              <button
+                type="button"
+                onClick={handlePublicarTodo}
+                disabled={guardando || preguntasBorrador.length === 0}
+                className="bg-[#008A52] hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow"
+              >
+                {guardando ? 'Guardando en BD...' : `Guardar Definitivo (${preguntasBorrador.length})`}
               </button>
             </div>
           </form>
 
           <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-3">
-            <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">Preguntas RAP</h3>
+            <h3 className="text-sm font-bold text-[#112F5C] border-b pb-3">Banco de Preguntas</h3>
 
             {rapSeleccionado ? (
               <div className="p-3.5 rounded-xl border border-sky-100 bg-sky-50 space-y-1">
@@ -398,8 +462,38 @@ export default function DocenteEditorPrueba() {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-[11px] font-bold text-gray-700">Preguntas creadas</span>
+            {/* PREGUNTAS EN BORRADOR */}
+            {preguntasBorrador.length > 0 && (
+              <div className="space-y-2 border-t pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-700">Borrador (Sin guardar en BD)</span>
+                  <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    {preguntasBorrador.length}
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {preguntasBorrador.map((p, idx) => (
+                    <div key={p.id_borrador} className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/50 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[11px] text-amber-900">Borrador {idx + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPreguntasBorrador(preguntasBorrador.filter((item) => item.id_borrador !== p.id_borrador))}
+                          className="text-[10px] text-red-600 font-bold hover:underline"
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-gray-800 font-medium leading-tight">{p.enunciado}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* PREGUNTAS GUARDADAS (PUBLICADAS) */}
+            <div className="flex items-center justify-between pt-3 border-t">
+              <span className="text-[11px] font-bold text-gray-700">Publicadas (Definitivas)</span>
               <div className="flex items-center gap-1.5">
                 <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                   {preguntas.length}
@@ -411,15 +505,15 @@ export default function DocenteEditorPrueba() {
             </div>
 
             {preguntas.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <p className="text-xs font-semibold text-gray-500">Sin preguntas agregadas a este RAP.</p>
+              <div className="text-center py-6 text-gray-400">
+                <p className="text-xs font-semibold text-gray-500">Sin preguntas guardadas en BD.</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[560px] overflow-y-auto pr-1">
+              <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
                 {preguntas.map((p, idx) => (
-                  <div key={p.id_pregunta || idx} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 space-y-1.5">
+                  <div key={p.id_pregunta || idx} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50 opacity-80 space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="font-bold text-xs text-[#112F5C]">Pregunta {idx + 1}</h4>
+                      <h4 className="font-bold text-xs text-[#112F5C]">Pregunta {idx + 1} (Guardada)</h4>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                           p.tipo_pregunta === 'ABIERTA'
